@@ -1,17 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const basePath = process.env.VITE_BASE_PATH ?? '/';
+
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
   fullyParallel: true,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:4173${basePath}`,
     ...devices['Desktop Chrome'],
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
+    url: `http://127.0.0.1:4173${basePath}`,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

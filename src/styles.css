@@ -50,6 +50,19 @@ h1, h2, p { margin-top: 0; }
 .data-toolbar h3 { margin: 0 0 5px; font-size: 14px; }
 .data-toolbar .muted { font-size: 12px; }
 .toolbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.import-panel { margin: 14px 0; padding: 18px; background: #fff; border: 1px solid var(--line); border-radius: 9px; }
+.import-panel h3 { margin: 0 0 6px; font-size: 15px; }
+.import-panel > .muted { margin: 0 0 13px; }
+.import-progress { min-height: 18px; margin: 10px 0 0; color: #174f78; font-size: 12px; line-height: 1.5; }
+.import-empty { margin: 12px 0 0; padding: 12px; border-radius: 6px; background: #f6f8fa; color: #344657; font-size: 12px; }
+.import-review-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.import-candidate { min-width: 0; padding: 14px; border: 1px solid #b9cfdf; border-radius: 8px; background: #f7fbfe; }
+.import-candidate h4 { margin: 0 0 8px; font-size: 14px; }
+.candidate-source { margin: 0 0 5px; padding: 8px; border-radius: 5px; background: #edf2f6; color: #17232f; font-size: 12px; overflow-wrap: anywhere; }
+.candidate-quality { margin: 0 0 12px; color: #344657; font-size: 11px; }
+.candidate-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.candidate-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 3px; }
+.candidate-actions .primary-button { padding: 8px 12px; font-size: 12px; }
 .secondary-button, .danger-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 650; cursor: pointer; text-decoration: none; }
 .secondary-button { color: #174f78; background: #fff; border: 1px solid #b5c8d7; }
 .secondary-button:hover { background: #f0f6fa; }
@@ -110,6 +123,9 @@ h1, h2, p { margin-top: 0; }
   .workspace-column { width: min(100% - 28px, 780px); padding-top: 25px; }
   .data-toolbar { align-items: stretch; flex-direction: column; }
   .forms-grid { grid-template-columns: 1fr; }
+  .import-review-list { grid-template-columns: 1fr; }
+  .candidate-form { grid-template-columns: 1fr; }
+  .candidate-actions { grid-column: 1; }
   .toolbar-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .toolbar-actions > :last-child { grid-column: 1 / -1; }
   .edit-form { grid-template-columns: 1fr; }

@@ -5,6 +5,7 @@ import { clearHealthRecord, loadHealthRecord, saveHealthRecord } from '../storag
 import { createPrivacyNotice } from './privacyNotice';
 import { createIndicatorForm, createMedicationForm, createObservationForm } from './manualForms';
 import { createReviewTable } from './reviewTable';
+import { createImportPanel } from './importPanel';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -187,6 +188,41 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     toolbarActions.append(exportButton, importLabel, clearButton);
     dataToolbar.append(toolbarHeading, toolbarActions);
     content.append(dataToolbar);
+
+    content.append(createImportPanel(async ({ candidate, file, pageCount, sourceId }) => {
+      const current = record ?? emptyRecord();
+      let indicator = current.indicators.find((item) => item.nameZh === candidate.nameZh && item.nameEn === candidate.nameEn && item.unit === candidate.unit);
+      const indicators = [...current.indicators];
+      if (!indicator) {
+        indicator = {
+          id: crypto.randomUUID(), nameZh: candidate.nameZh, nameEn: candidate.nameEn,
+          purposeZh: candidate.purposeZh, purposeEn: candidate.purposeEn, category: candidate.category,
+          unit: candidate.unit,
+          lowerLimit: candidate.lowerLimit ? Number(candidate.lowerLimit) : null,
+          upperLimit: candidate.upperLimit ? Number(candidate.upperLimit) : null,
+          priority: candidate.priority,
+        };
+        indicators.push(indicator);
+      }
+      const sources = current.sources.some((source) => source.id === sourceId) ? current.sources : [...current.sources, {
+        id: sourceId, fileName: file.name, type: file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ? 'pdf' as const : 'image' as const,
+        importedAt: new Date().toISOString(), pageCount,
+      }];
+      const observations = [...current.observations, {
+        id: crypto.randomUUID(), indicatorId: indicator.id, date: candidate.date,
+        value: Number(candidate.value), unit: indicator.unit, sourceId, pageNumber: candidate.pageNumber, confirmed: true as const,
+      }];
+      const next = { ...current, indicators, observations, sources };
+      await saveHealthRecord(next);
+      record = next;
+      const savedRecords = root.querySelector('.saved-records');
+      if (savedRecords) {
+        savedRecords.replaceChildren(
+          makeSectionHeading('已确认的资料', '这些内容已保存在本机；OCR 草稿只有经你确认后才会进入此处。'),
+          createReviewTable(record),
+        );
+      }
+    }));
 
     const forms = element('div', 'forms-grid');
     const medPanel = element('section', 'form-panel');

@@ -5,6 +5,7 @@ dist/
 playwright-report/
 test-results/
 coverage/
+public/ocr/
 *.pdf
 *.png
 *.jpg
