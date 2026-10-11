@@ -1,0 +1,13 @@
+.worktrees/
+.superpowers/
+node_modules/
+dist/
+playwright-report/
+test-results/
+coverage/
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+.DS_Store
