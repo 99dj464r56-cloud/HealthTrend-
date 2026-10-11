@@ -37,6 +37,7 @@ export interface Observation {
   value: number;
   unit: string;
   sourceId: string | null;
+  pageNumber?: number | null;
   confirmed: true;
 }
 

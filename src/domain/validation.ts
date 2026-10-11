@@ -66,6 +66,7 @@ function assertObservation(value: unknown): asserts value is Observation {
   assert(typeof value.value === 'number' && Number.isFinite(value.value), 'Observation value must be a finite number.');
   assert(isText(value.unit), 'Observation unit is required.');
   assert(value.sourceId === null || isText(value.sourceId), 'Observation source reference is invalid.');
+  assert(value.pageNumber === undefined || value.pageNumber === null || (Number.isInteger(value.pageNumber) && Number(value.pageNumber) > 0), 'Observation source page must be a positive integer or blank.');
   assert(value.confirmed === true, 'Only confirmed observations can be saved.');
 }
 
