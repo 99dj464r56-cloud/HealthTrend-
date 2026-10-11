@@ -8,6 +8,8 @@
     "dev": "vite",
     "prebuild": "node scripts/copy-ocr-assets.mjs",
     "build": "tsc --noEmit && vite build",
+    "audit:public": "node scripts/audit-public.mjs",
+    "test:release": "npm test && npm run build && npm run audit:public && npm run test:e2e",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test"

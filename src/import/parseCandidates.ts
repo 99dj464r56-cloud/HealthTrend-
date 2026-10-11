@@ -59,6 +59,7 @@ export function parseCandidates(source: SourcePage): ImportCandidate[] {
     const after = line.slice(valuePosition + valueMatch[1].length).trim();
     const unitMatch = after.match(/^(%|(?:m?u|n|p|f)?(?:mol|g|kat|eq|cells?|copies|IU|U|L|dL|mL|µL|μL|umol|µmol|μmol|ng|pg|mg|mmol)(?:\s*\/\s*[\wµμ]+)?(?:\s*\^?\d+)?)/i);
     if (before.length < 2 || !unitMatch) continue;
+    if (/^(?:mg|g|mcg|µg|μg|ug)$/i.test(unitMatch[0].replace(/\s+/g, ''))) continue;
     const [lowerLimit, upperLimit] = extractRange(after.slice(unitMatch[0].length));
     result.push({
       id: crypto.randomUUID(), status: 'draft', kind: 'observation', pageNumber: source.pageNumber,

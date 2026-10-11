@@ -53,6 +53,7 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
   const input = node('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp,application/pdf,.pdf';
+  input.setAttribute('capture', 'environment');
   input.multiple = true;
   input.setAttribute('aria-label', '选择照片或 PDF 文件');
   label.append(input);

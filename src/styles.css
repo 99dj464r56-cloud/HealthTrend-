@@ -15,6 +15,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 button, input, select, textarea { font: inherit; }
 .page-shell { min-height: 100vh; }
 .topbar { height: 78px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 5vw, 72px); background: #fff; border-bottom: 1px solid var(--line); }

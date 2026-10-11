@@ -24,6 +24,15 @@ describe('health document ingestion', () => {
     expect(parseCandidates(source)[0]).toMatchObject({ lowerLimit: '', upperLimit: '' });
   });
 
+  it('does not misclassify a bare medicine strength as a lab result', () => {
+    const source: SourcePage = {
+      pageNumber: 1,
+      text: 'METOPROLOL-WGR 50 mg\nTake a half tablet daily',
+      confidence: 90,
+    };
+    expect(parseCandidates(source)).toEqual([]);
+  });
+
   it('rejects unsupported files and files above the local processing limit', () => {
     expect(() => validateImportFile({ name: 'notes.txt', type: 'text/plain', size: 1 } as File)).toThrow(/支持/);
     expect(() => validateImportFile({ name: 'large.pdf', type: 'application/pdf', size: MAX_IMPORT_BYTES + 1 } as File)).toThrow(/20 MB/);
