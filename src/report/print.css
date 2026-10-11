@@ -1,0 +1,67 @@
+.print-report { width: min(1240px, calc(100% - 36px)); margin: 18px auto 40px; padding: 20px 24px 34px; background: #fff; color: #17232f; }
+.print-controls { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 20px; }
+.report-header { padding: 6px 0 14px; border-bottom: 2px solid #1769aa; }
+.report-header h1 { margin: 0 0 5px; font-size: 23px; }
+.report-created, .report-disclaimer, .report-note { margin: 0 0 5px; color: #344657; font-size: 11px; line-height: 1.5; }
+.report-medications { margin: 14px 0 19px; }
+.report-medications h2 { margin: 0 0 7px; font-size: 15px; }
+.report-table-wrap { width: 100%; overflow-x: auto; }
+.report-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; }
+.report-table th, .report-table td { padding: 5px 6px; border: 1px solid #d8e0e7; text-align: left; vertical-align: top; overflow-wrap: anywhere; line-height: 1.35; }
+.report-table th { background: #edf3f8; color: #253746; font-weight: 700; }
+.chart-section { margin: 22px 0 28px; }
+.chart-section-heading { margin: 0 0 11px; }
+.chart-section-heading h2 { margin: 0 0 4px; color: #253746; font-size: 18px; }
+.priority-section > .chart-section-heading h2 { color: #b42332; }
+.chart-section-heading p { margin: 0; color: #344657; font-size: 10px; line-height: 1.4; }
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.chart-card { min-width: 0; padding: 9px 10px 8px; border: 1px solid #d3dce4; border-radius: 6px; break-inside: avoid; page-break-inside: avoid; }
+.chart-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; margin: 0 0 3px; color: #253746; font-size: 12px; line-height: 1.25; }
+.priority-card .chart-title { color: #b42332; }
+.chart-title-en { font-weight: 600; }
+.chart-unit { display: block; margin: 0 0 3px; color: #344657; font-size: 8px; }
+.chart-purpose { min-height: 20px; margin: 0 0 2px; color: #17232f; font-size: 8px; line-height: 1.3; }
+.indicator-chart { display: block; width: 100%; height: 55mm; overflow: visible; }
+.indicator-chart text { font-family: Arial, "Noto Sans CJK SC", "PingFang SC", sans-serif; font-size: 13px; }
+.indicator-chart .reference-label { font-size: 12px; font-weight: 700; }
+.indicator-chart .point-label { font-size: 13px; font-weight: 700; }
+.indicator-chart .axis-date, .indicator-chart .axis-unit { fill: #344657; font-size: 11px; }
+.indicator-chart .chart-empty { fill: #4b5968; font-size: 13px; }
+.chart-medications { min-height: 16px; border-top: 1px solid #e5eaf0; padding-top: 4px; color: #17232f; font-size: 8px; line-height: 1.35; }
+.chart-medications strong { color: #253746; }
+.chart-medications p { margin: 3px 0 0; }
+.report-footer { margin-top: 15px; padding-top: 7px; border-top: 1px solid #d8e0e7; color: #344657; font-size: 9px; }
+
+@media (max-width: 680px) {
+  .print-report { width: 100%; margin: 0; padding: 16px; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-card { overflow-x: auto; }
+  .indicator-chart { min-width: 480px; }
+  .report-table { min-width: 800px; }
+}
+
+@page {
+  size: A4 landscape;
+  margin: 9mm 9mm 12mm;
+  @bottom-right { content: "Page " counter(page); color: #4b5968; font-size: 8pt; }
+}
+
+@media print {
+  :root, body { background: #fff !important; color: #111 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { min-width: 0; }
+  .print-report { width: auto; margin: 0; padding: 0; }
+  .print-controls { display: none !important; }
+  .report-header { padding-top: 0; }
+  .chart-section { margin: 0; break-inside: auto; page-break-inside: auto; }
+  .chart-section + .chart-section { break-before: page; page-break-before: always; }
+  .chart-section-heading { break-after: avoid; page-break-after: avoid; }
+  .chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5mm; }
+  .chart-card { padding: 3mm; border-color: #b9c4cd; }
+  .indicator-chart { height: 54mm; }
+  .report-medications, .report-table-wrap { break-inside: avoid; page-break-inside: avoid; }
+  .report-table th, .report-table td { padding: 3px 4px; font-size: 8pt; }
+  .chart-title { font-size: 10pt; }
+  .chart-unit, .chart-purpose, .chart-medications { font-size: 7.5pt; }
+  .chart-purpose { min-height: 0; }
+  .report-footer { margin-top: 7mm; }
+}

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "medications": [
+    {
+      "id": "synthetic-medication",
+      "nameZh": "合成示例药",
+      "nameEn": "Synthetic medicine",
+      "strength": "10 mg",
+      "instructions": "Daily, synthetic test only",
+      "startDate": "2025-01-01",
+      "endDate": null,
+      "linkedIndicatorIds": ["synthetic-marker"]
+    }
+  ],
+  "indicators": [
+    {
+      "id": "synthetic-marker",
+      "nameZh": "合成示例指标",
+      "nameEn": "Synthetic marker",
+      "purposeZh": "用于界面布局测试，不代表真实检查用途",
+      "purposeEn": "Synthetic test of report layout only",
+      "category": "Synthetic group",
+      "unit": "mmol/L",
+      "lowerLimit": 3,
+      "upperLimit": 7,
+      "priority": true
+    },
+    {
+      "id": "empty-marker",
+      "nameZh": "无数据示例指标",
+      "nameEn": "Empty synthetic marker",
+      "purposeZh": "验证空数据卡片",
+      "purposeEn": "Validates empty series layout",
+      "category": "Synthetic group",
+      "unit": "U/L",
+      "lowerLimit": null,
+      "upperLimit": 20,
+      "priority": false
+    }
+  ],
+  "observations": [
+    { "id": "synthetic-2024", "indicatorId": "synthetic-marker", "date": "2024-06-30", "value": 5, "unit": "mmol/L", "sourceId": null, "confirmed": true },
+    { "id": "synthetic-2025", "indicatorId": "synthetic-marker", "date": "2025-07-01", "value": 2.8, "unit": "mmol/L", "sourceId": null, "confirmed": true },
+    { "id": "synthetic-2026", "indicatorId": "synthetic-marker", "date": "2026-09-09", "value": 7.4, "unit": "mmol/L", "sourceId": null, "confirmed": true }
+  ],
+  "sources": []
+}

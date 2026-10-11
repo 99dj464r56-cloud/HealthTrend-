@@ -6,6 +6,8 @@ import { createPrivacyNotice } from './privacyNotice';
 import { createIndicatorForm, createMedicationForm, createObservationForm } from './manualForms';
 import { createReviewTable } from './reviewTable';
 import { createImportPanel } from './importPanel';
+import { buildReportModel } from '../report/reportModel';
+import { createPrintView } from '../report/printView';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -144,6 +146,14 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     toolbarNote.textContent = '备份文件只包含已确认的文字记录，不包含原始照片或 PDF。';
     toolbarHeading.append(toolbarTitle, toolbarNote);
     const toolbarActions = element('div', 'toolbar-actions');
+    const reportButton = makeButton('预览趋势报告 / PDF', 'secondary-button');
+    reportButton.addEventListener('click', () => {
+      if (!record) return;
+      root.replaceChildren(createPrintView(buildReportModel(record), {
+        onPrint: () => window.print(),
+        onBack: render,
+      }));
+    });
     const exportButton = makeButton('导出 JSON 备份', 'secondary-button');
     exportButton.addEventListener('click', () => {
       if (!record) return;
@@ -185,7 +195,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       record = null;
       render();
     });
-    toolbarActions.append(exportButton, importLabel, clearButton);
+    toolbarActions.append(reportButton, exportButton, importLabel, clearButton);
     dataToolbar.append(toolbarHeading, toolbarActions);
     content.append(dataToolbar);
 
