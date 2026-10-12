@@ -20,7 +20,12 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run build:pages
+      - name: Run unit tests
+        run: npm test
+      - name: Build Pages app
+        run: npm run build:pages
+      - name: Audit Pages build
+        run: npm run audit:pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

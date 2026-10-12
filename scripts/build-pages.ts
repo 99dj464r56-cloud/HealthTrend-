@@ -11,6 +11,10 @@ const out = join(root, 'dist');
 const base = process.env.VITE_BASE_PATH ?? '/HealthTrend-/';
 
 rmSync(out, { recursive: true, force: true });
+
+const ocr = spawnSync('node', ['scripts/copy-ocr-assets.mjs'], { cwd: root, stdio: 'inherit' });
+if (ocr.status !== 0) process.exit(ocr.status ?? 1);
+
 const build = spawnSync('npx', ['vite', 'build'], {
   cwd: root,
   stdio: 'inherit',
