@@ -166,7 +166,7 @@ export function buildReportModel(record: HealthRecord, now = new Date()): Report
 
   const createdDate = localDate(now);
   return {
-    title: 'Health Trend Report / 健康指标趋势报告',
+    title: 'HealthTrend Report / 健康指标趋势报告',
     createdDate,
     profileDisplayName: record.profile.displayName.trim(),
     medications,

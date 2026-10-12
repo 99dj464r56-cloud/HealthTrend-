@@ -116,6 +116,7 @@ function migrateMedicationsAndStages(raw: Record<string, unknown>): {
       nameZh: String(item.nameZh ?? ''),
       nameEn: String(item.nameEn ?? ''),
       linkedIndicatorIds: linked,
+      monitoringNote: asOptionalText(item.monitoringNote),
     });
 
     // Legacy v1/v2 medication carried a single strength/instructions/date triple.

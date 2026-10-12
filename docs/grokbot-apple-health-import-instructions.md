@@ -5,9 +5,9 @@
 ## 项目在哪里
 
 - 当前代码工作树（优先在此路径工作）：
-  `/Users/viminowu/Projects/health-trend-pdf/.worktrees/health-trend-pdf`
+  `<worktree>`
 - 当前分支：`feature/health-trend-pdf`
-- 仓库主目录：`/Users/viminowu/Projects/health-trend-pdf`
+- 仓库主目录：`<repo>`
 - 设计规格：`docs/superpowers/specs/2026-10-12-health-trend-pdf-design.md`
 - 实施计划：`docs/superpowers/plans/2026-10-12-health-trend-pdf.md`
 - README：`README.md`

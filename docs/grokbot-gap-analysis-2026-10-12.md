@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-12 (Asia/Taipei)  
 **Branch:** `feature/health-trend-pdf` @ `396051a`  
-**Worktree:** `/Users/viminowu/Projects/health-trend-pdf/.worktrees/health-trend-pdf`  
+**Worktree:** `<worktree>`  
 **Scope:** Phase 1 only (instructions §5 item 1). No large implementation in this session.  
 **Sources:** `docs/grokbot-complete-health-trend-pdf-instructions.md` §§2–7, design spec, implementation plan, current `src/**`, `README.md`, `PRIVACY.md`.
 

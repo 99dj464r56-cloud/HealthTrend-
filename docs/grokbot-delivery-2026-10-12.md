@@ -1,7 +1,7 @@
 # Health Trend PDF — Delivery Report (2026-10-12)
 
 Branch: `feature/health-trend-pdf`  
-Worktree: `/Users/viminowu/Projects/health-trend-pdf/.worktrees/health-trend-pdf`  
+Worktree: `<worktree>`  
 **All work remains uncommitted** (for parent/user review before any commit).
 
 ## 1. Completed

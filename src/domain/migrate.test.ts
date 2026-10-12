@@ -88,7 +88,7 @@ describe('schema migration v1 → v2', () => {
       }],
     };
     const migrated = migrateHealthRecord(legacy);
-    expect(migrated.medications[0]).toMatchObject({ id: 'med-1', nameZh: '示例药', linkedIndicatorIds: ['glucose'] });
+    expect(migrated.medications[0]).toMatchObject({ id: 'med-1', nameZh: '示例药', linkedIndicatorIds: ['glucose'], monitoringNote: null });
     expect(migrated.regimenStages).toHaveLength(1);
     expect(migrated.regimenStages[0]).toMatchObject({
       medicationId: 'med-1', strengthLabel: '10 mg', frequency: 'Daily', startDate: '2024-01-01', packCountLabel: null,

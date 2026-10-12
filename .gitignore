@@ -12,3 +12,16 @@ public/ocr/
 *.jpeg
 *.webp
 .DS_Store
+public/seeds/personal-backup.json
+.private/
+tmp/
+
+# Keep PWA / docs screenshots (override *.png ignore)
+!public/icons/
+!public/icons/*.png
+!docs/
+!docs/**/*.png
+!build/icon.svg
+
+build/icon-1024.png
+build/icon.icns

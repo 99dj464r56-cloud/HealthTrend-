@@ -1,6 +1,7 @@
 import { extractPdfText } from '../import/pdfText';
 import { recognizeImage, type OcrProgress } from '../import/imageOcr';
 import { parseCandidates, type ImportCandidate, type SourcePage } from '../import/parseCandidates';
+import { parseMedicationCandidates, type MedicationImportCandidate } from '../import/medicationPackaging';
 import { validateImportFile } from '../import/limits';
 
 export interface ConfirmedDraft {
@@ -10,18 +11,30 @@ export interface ConfirmedDraft {
   sourceId: string;
 }
 
+export interface ConfirmedMedicationDraft {
+  candidate: MedicationImportCandidate;
+  file: File;
+  pageCount: number;
+  sourceId: string;
+}
+
+export interface ImportPanelHandlers {
+  onConfirmObservation: (draft: ConfirmedDraft) => Promise<void>;
+  onConfirmMedication: (draft: ConfirmedMedicationDraft) => Promise<void>;
+}
+
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
   const value = document.createElement(tag);
   if (className) value.className = className;
   return value;
 }
 
-function field(form: HTMLElement, caption: string, key: keyof ImportCandidate, value: string, type = 'text', required = false): HTMLInputElement {
+function field(form: HTMLElement, caption: string, name: string, value: string, type = 'text', required = false): HTMLInputElement {
   const label = node('label', 'form-field');
   const text = node('span');
   text.textContent = caption;
   const input = node('input');
-  input.name = key;
+  input.name = name;
   input.type = type;
   input.value = value;
   input.required = required;
@@ -31,8 +44,16 @@ function field(form: HTMLElement, caption: string, key: keyof ImportCandidate, v
   return input;
 }
 
+function readForm(form: HTMLFormElement, name: string): string {
+  return String(formData(form).get(name) ?? '').trim();
+}
+
+function formData(form: HTMLFormElement): FormData {
+  return new FormData(form);
+}
+
 function selectCandidate(candidate: ImportCandidate, form: HTMLFormElement): ImportCandidate {
-  const data = new FormData(form);
+  const data = formData(form);
   const read = (name: keyof ImportCandidate) => String(data.get(name) ?? '').trim();
   return {
     ...candidate,
@@ -42,12 +63,31 @@ function selectCandidate(candidate: ImportCandidate, form: HTMLFormElement): Imp
   };
 }
 
-export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<void>): HTMLElement {
+function selectMedication(candidate: MedicationImportCandidate, form: HTMLFormElement): MedicationImportCandidate {
+  return {
+    ...candidate,
+    nameZh: readForm(form, 'nameZh'),
+    nameEn: readForm(form, 'nameEn'),
+    strengthLabel: readForm(form, 'strengthLabel'),
+    doseAmount: readForm(form, 'doseAmount'),
+    doseUnit: readForm(form, 'doseUnit'),
+    frequency: readForm(form, 'frequency'),
+    form: readForm(form, 'form'),
+    packCountLabel: readForm(form, 'packCountLabel'),
+    linkedIndicatorHints: readForm(form, 'linkedIndicatorHints'),
+  };
+}
+
+/**
+ * Photo/PDF import: lab observation drafts + medication packaging drafts.
+ * Nothing is written until the user confirms a draft card.
+ */
+export function createImportPanel(handlers: ImportPanelHandlers): HTMLElement {
   const panel = node('section', 'import-panel');
   const heading = node('h3');
-  heading.textContent = '照片 / PDF 导入';
+  heading.textContent = '照片 / PDF 导入（化验 + 药盒）';
   const note = node('p', 'muted');
-  note.textContent = '在本机识别中英文；扫描 PDF 会逐页 OCR。识别结果只作为待核对草稿，不会自动写入记录。单个文件上限 20 MB，PDF 最多 20 页。';
+  note.textContent = '选择药盒或化验照片／PDF → 本机识别 → 核对草稿后写入。';
   const label = node('label', 'secondary-button file-button');
   label.textContent = '选择照片或 PDF';
   const input = node('input');
@@ -91,8 +131,10 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
             pages = [page];
           }
           const sourceId = crypto.randomUUID();
-          const candidates = pages.flatMap(parseCandidates);
-          for (const candidate of candidates) addDraft(candidate, file, pages.length, sourceId);
+          const labCandidates = pages.flatMap(parseCandidates);
+          const medCandidates = pages.flatMap(parseMedicationCandidates);
+          for (const candidate of medCandidates) addMedicationDraft(candidate, file, pages.length, sourceId);
+          for (const candidate of labCandidates) addObservationDraft(candidate, file, pages.length, sourceId);
           for (const page of pages) {
             if (!page.text.trim()) continue;
             const details = node('details', 'recognized-text');
@@ -103,12 +145,12 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
             details.append(summary, text);
             review.append(details);
           }
-          if (!candidates.length) {
+          if (!labCandidates.length && !medCandidates.length) {
             const message = node('p', 'import-empty');
-            message.textContent = `${file.name} 已识别，但没有找到可安全提取的“数值 + 单位”行。请使用下方手动录入；原始识别文本不会保存。`;
+            message.textContent = `${file.name} 已识别，但没有找到可安全提取的化验行或药盒字段。请使用底部手动录入；原始识别文本不会保存。`;
             review.append(message);
           }
-          progress.textContent = `${file.name}：完成 ${pages.length} 页本机识别，发现 ${candidates.length} 条待核对项目。`;
+          progress.textContent = `${file.name}：完成 ${pages.length} 页本机识别 · 药物草稿 ${medCandidates.length} · 化验草稿 ${labCandidates.length}（均需核对）。`;
         } catch (error) {
           progress.textContent = error instanceof Error ? error.message : '本机识别失败，请尝试手动录入。';
         } finally {
@@ -124,10 +166,10 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
     progress.textContent = `${value.message || '本机 OCR'}${pct ? ` · ${pct}%` : ''}`;
   }
 
-  function addDraft(candidate: ImportCandidate, file: File, pageCount: number, sourceId: string): void {
+  function addObservationDraft(candidate: ImportCandidate, file: File, pageCount: number, sourceId: string): void {
     const card = node('article', 'import-candidate');
     const title = node('h4');
-    title.textContent = `待核对草稿 · 第 ${candidate.pageNumber} 页`;
+    title.textContent = `化验草稿 · 第 ${candidate.pageNumber} 页`;
     const source = node('p', 'candidate-source');
     source.textContent = candidate.sourceText;
     const quality = node('p', 'candidate-quality');
@@ -146,7 +188,7 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
     const actions = node('div', 'candidate-actions');
     const confirm = node('button', 'primary-button');
     confirm.type = 'submit';
-    confirm.textContent = '核对并加入记录';
+    confirm.textContent = '核对并加入化验记录';
     const discard = node('button', 'text-button');
     discard.type = 'button';
     discard.textContent = '舍弃草稿';
@@ -163,15 +205,73 @@ export function createImportPanel(onConfirm: (draft: ConfirmedDraft) => Promise<
           return;
         }
         try {
-          await onConfirm({ candidate: completed, file, pageCount, sourceId });
+          await handlers.onConfirmObservation({ candidate: completed, file, pageCount, sourceId });
           card.remove();
-          progress.textContent = '已将这条经确认的记录保存在本机。';
+          progress.textContent = '已将这条经确认的化验记录保存在本机。';
         } catch (error) {
           progress.textContent = error instanceof Error ? error.message : '保存失败，请检查草稿。';
         }
       })();
     });
     card.append(title, source, quality, form);
+    review.append(card);
+  }
+
+  function addMedicationDraft(candidate: MedicationImportCandidate, file: File, pageCount: number, sourceId: string): void {
+    const card = node('article', 'import-candidate import-candidate-med');
+    const title = node('h4');
+    title.textContent = `药物草稿 · 第 ${candidate.pageNumber} 页`;
+    const source = node('p', 'candidate-source');
+    source.textContent = candidate.sourceText;
+    const quality = node('p', 'candidate-quality');
+    quality.textContent = candidate.confidence === null
+      ? '来源：PDF 文字层 · 药盒／标签启发式解析'
+      : `OCR 置信度：${Math.round(candidate.confidence)}% · 药盒／标签启发式解析（须人工核对）`;
+    if (candidate.warnings.length) {
+      const warn = node('p', 'form-help');
+      warn.textContent = candidate.warnings.join(' ');
+      card.append(title, source, quality, warn);
+    } else {
+      card.append(title, source, quality);
+    }
+    const form = node('form', 'candidate-form');
+    field(form, '中文药名', 'nameZh', candidate.nameZh, 'text', true);
+    field(form, 'English medication name', 'nameEn', candidate.nameEn, 'text', true);
+    field(form, '规格（如 10 mg）', 'strengthLabel', candidate.strengthLabel, 'text', true);
+    field(form, '单次剂量数量', 'doseAmount', candidate.doseAmount, 'text');
+    field(form, '单次剂量单位', 'doseUnit', candidate.doseUnit, 'text');
+    field(form, '服用频率', 'frequency', candidate.frequency, 'text', true);
+    field(form, '剂型', 'form', candidate.form, 'text');
+    field(form, '包装数量（不是剂量）', 'packCountLabel', candidate.packCountLabel, 'text');
+    field(form, '建议关联指标名称（分号分隔；仅提示，不写入化验值）', 'linkedIndicatorHints', candidate.linkedIndicatorHints, 'text');
+    const actions = node('div', 'candidate-actions');
+    const confirm = node('button', 'primary-button');
+    confirm.type = 'submit';
+    confirm.textContent = '核对并加入药单';
+    const discard = node('button', 'text-button');
+    discard.type = 'button';
+    discard.textContent = '舍弃草稿';
+    discard.addEventListener('click', () => card.remove());
+    actions.append(confirm, discard);
+    form.append(actions);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void (async () => {
+        const completed = selectMedication(candidate, form);
+        if (!completed.nameZh || !completed.nameEn || !completed.strengthLabel || !completed.frequency) {
+          progress.textContent = '请至少填写双语药名、规格与服用频率后再确认。';
+          return;
+        }
+        try {
+          await handlers.onConfirmMedication({ candidate: completed, file, pageCount, sourceId });
+          card.remove();
+          progress.textContent = '已将这条经确认的药物／用法保存在本机。';
+        } catch (error) {
+          progress.textContent = error instanceof Error ? error.message : '保存失败，请检查草稿。';
+        }
+      })();
+    });
+    card.append(form);
     review.append(card);
   }
 

@@ -3,8 +3,7 @@ import { expect, test } from '@playwright/test';
 test('local OCR produces editable drafts, and only confirmed values enter the record', async ({ page }) => {
   const requests: Array<{ url: string; method: string; body: string | null }> = [];
   page.on('request', (request) => requests.push({ url: request.url(), method: request.method(), body: request.postData() }));
-  await page.goto('./');
-  await page.getByRole('button', { name: '开始整理' }).click();
+  await page.goto('./?mode=guest');
   await page.getByLabel('档案显示名').fill('Alex Demo');
   await page.getByLabel('我确认以上显示名对应该档案所属人').check();
   await page.getByRole('button', { name: '保存档案身份' }).click();

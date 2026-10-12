@@ -1,4 +1,3 @@
-import { buildRangeBandSegments } from './rangeBands';
 import { classifyObservation, type ChartPoint, type ChartSeries, type ObservationClassification } from './series';
 import { assignTimeScaleX, dateToMs, fullDateLabel } from './timeScale';
 
@@ -11,7 +10,6 @@ const TOP = 28;
 const BOTTOM = 242;
 const ABNORMAL = '#b42332';
 const RANGE_STROKE = '#9a6b0d';
-const POINT_TICK_HALF = 9;
 
 function svgNode<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string> = {}): SVGElementTagNameMap[K] {
   const node = document.createElementNS(NS, tag);
@@ -71,79 +69,112 @@ function drawRegimenBands(
   });
 }
 
-function appendRangeMark(
+function limitsEqual(
+  a: { lowerLimit: number | null; upperLimit: number | null },
+  b: { lowerLimit: number | null; upperLimit: number | null },
+): boolean {
+  return a.lowerLimit === b.lowerLimit && a.upperLimit === b.upperLimit;
+}
+
+function drawFullWidthLimit(
   svg: SVGSVGElement,
   which: 'lower' | 'upper',
-  x: number,
   y: number,
   value: number,
   unit: string,
-  options: { band?: boolean; x2?: number },
+  labelExtra: string,
+  labelLane: number,
 ): void {
-  const x1 = options.band && options.x2 !== undefined ? x : x - POINT_TICK_HALF;
-  const x2 = options.band && options.x2 !== undefined ? options.x2 : x + POINT_TICK_HALF;
   const line = svgNode('line', {
-    x1: String(x1),
+    x1: String(LEFT),
     y1: String(y),
-    x2: String(x2),
+    x2: String(RIGHT),
     y2: String(y),
     stroke: RANGE_STROKE,
-    'stroke-width': options.band ? '1.4' : '1.2',
-    'stroke-dasharray': '6 5',
+    'stroke-width': '1.6',
+    'stroke-dasharray': '7 5',
     'data-reference': which,
     'data-reference-value': String(value),
     'data-y': String(y),
     'data-report-range': 'true',
-    ...(options.band ? { 'data-range-band': 'true' } : { 'data-point-range': 'true' }),
+    'data-range-band': 'true',
+    'data-full-width-limit': 'true',
   });
   svg.append(line);
-  if (options.band) {
-    const label = svgNode('text', {
-      x: String(x1 + 2),
-      y: String(y - 4),
-      'text-anchor': 'start',
-      fill: '#68490b',
-      class: 'reference-label',
-      'data-reference-label': which,
-      'data-report-range-label': 'true',
-    });
-    label.textContent = `${which === 'lower' ? '下限' : '上限'} ${value} ${unit} · 该次报告参考范围`;
-    svg.append(label);
-  }
+  // Prefer above the line; if near the top edge, place below so text stays in-plot.
+  const preferAbove = y - 5 + labelLane * 12;
+  const labelY = preferAbove < TOP + 12
+    ? Math.min(BOTTOM - 4, y + 14 + Math.abs(labelLane) * 12)
+    : Math.max(TOP + 12, Math.min(BOTTOM - 4, preferAbove));
+  const label = svgNode('text', {
+    x: String(LEFT + 4),
+    y: String(labelY),
+    'text-anchor': 'start',
+    fill: '#68490b',
+    class: 'reference-label',
+    'data-reference-label': which,
+    'data-report-range-label': 'true',
+  });
+  label.textContent = `${which === 'lower' ? '下限' : '上限'} ${value} ${unit}${labelExtra}`;
+  svg.append(label);
 }
 
+function drawMissingLimitNote(
+  svg: SVGSVGElement,
+  which: 'lower' | 'upper',
+  lane: number,
+): void {
+  // Anchor to the top-right of the plot so notes stay clear of dashed limit labels (usually left).
+  const y = TOP + 12 + lane * 14;
+  const label = svgNode('text', {
+    x: String(RIGHT - 4),
+    y: String(y),
+    'text-anchor': 'end',
+    fill: '#6b7280',
+    class: 'reference-missing-label',
+    'data-reference-missing': which,
+  });
+  label.textContent = which === 'lower' ? '报告未提供下限' : '报告未提供上限';
+  svg.append(label);
+}
+
+/**
+ * Draw dashed reference limits across the full time axis.
+ * Same limits on every point → one full-width line each.
+ * Differing limits → full-width line for the most recent report's limits, dated in the label.
+ * Point abnormal colors still come from each observation's own limits (caller).
+ */
 function drawRangeVisuals(
   svg: SVGSVGElement,
   plottable: ChartPoint[],
-  xs: number[],
+  _xs: number[],
   min: number,
   max: number,
   unit: string,
 ): void {
-  const segments = buildRangeBandSegments(plottable);
+  if (!plottable.length) return;
 
-  // Per-point ticks at every measurement that has limits (default view).
-  plottable.forEach((point, index) => {
-    const x = xs[index]!;
-    if (point.lowerLimit !== null) {
-      appendRangeMark(svg, 'lower', x, mappedY(point.lowerLimit, min, max), point.lowerLimit, unit, {});
-    }
-    if (point.upperLimit !== null) {
-      appendRangeMark(svg, 'upper', x, mappedY(point.upperLimit, min, max), point.upperLimit, unit, {});
-    }
-  });
+  const allSame = plottable.every((point) => limitsEqual(point, plottable[0]!));
+  const display = plottable[plottable.length - 1]!;
+  const dateTag = allSame ? '' : `（${display.date} 报告）`;
 
-  // Connect into a band only when lab+method+limits stay consistent across consecutive points.
-  for (const segment of segments) {
-    if (!segment.connectBand) continue;
-    const x1 = xs[segment.startIndex]!;
-    const x2 = xs[segment.endIndex]!;
-    if (segment.lower !== null) {
-      appendRangeMark(svg, 'lower', x1, mappedY(segment.lower, min, max), segment.lower, unit, { band: true, x2 });
-    }
-    if (segment.upper !== null) {
-      appendRangeMark(svg, 'upper', x1, mappedY(segment.upper, min, max), segment.upper, unit, { band: true, x2 });
-    }
+  let lane = 0;
+  if (display.lowerLimit !== null) {
+    drawFullWidthLimit(
+      svg, 'lower', mappedY(display.lowerLimit, min, max), display.lowerLimit, unit, dateTag, 0,
+    );
+  } else {
+    drawMissingLimitNote(svg, 'lower', lane);
+    lane += 1;
+  }
+  if (display.upperLimit !== null) {
+    // Offset label up if both limits exist so they don't collide when close.
+    const labelLane = display.lowerLimit !== null ? -1 : 0;
+    drawFullWidthLimit(
+      svg, 'upper', mappedY(display.upperLimit, min, max), display.upperLimit, unit, dateTag, labelLane,
+    );
+  } else {
+    drawMissingLimitNote(svg, 'upper', lane);
   }
 }
 
@@ -253,21 +284,38 @@ export function renderIndicatorChart(series: ChartSeries): SVGSVGElement {
     const originalIndex = latestStart + index;
     const anchor = visible.length === 1 ? 'middle' : index === visible.length - 1 ? 'end' : index === 0 ? 'start' : 'middle';
     const labelText = `${abnormalArrow(status)}${point.rawValue || point.value} · ${fullDateLabel(point.date)}`;
-    const width = labelText.length * 7.2;
-    const left = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+    const width = Math.min(labelText.length * 6.6, 200);
+    let left = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+    // Keep labels inside plot horizontally.
+    if (left < LEFT) left = LEFT;
+    if (left + width > RIGHT) left = RIGHT - width;
     const right = left + width;
-    const offsets = [-13, 22, -32, 41, -51, 60, -70, 78];
-    const candidates = [...new Set(offsets.map((offset) => Math.max(TOP + 12, Math.min(BOTTOM - 5, y + offset))))];
+    const offsets = [-16, 20, -34, 38, -52, 54, -68, 72, -84, 88];
+    const candidates = [...new Set(offsets.map((offset) => Math.max(TOP + 14, Math.min(BOTTOM - 8, y + offset))))];
     const labelY = candidates.find((baseline) => {
-      const top = baseline - 13;
-      const bottom = baseline + 2;
+      const top = baseline - 12;
+      const bottom = baseline + 3;
       return placedLabels.every((placed) =>
-        right <= placed.left || left >= placed.right || bottom <= placed.top || top >= placed.bottom,
+        right <= placed.left - 2 || left >= placed.right + 2 || bottom <= placed.top || top >= placed.bottom,
       );
     }) ?? candidates[0] ?? y;
-    placedLabels.push({ left, right, top: labelY - 13, bottom: labelY + 2 });
+    placedLabels.push({ left, right, top: labelY - 12, bottom: labelY + 3 });
+    if (Math.abs(labelY - y) > 14) {
+      const leader = svgNode('line', {
+        x1: String(x),
+        y1: String(y),
+        x2: String(anchor === 'end' ? right - 2 : anchor === 'start' ? left + 2 : (left + right) / 2),
+        y2: String(labelY - 2),
+        stroke: statusColor(status),
+        'stroke-width': '0.8',
+        'stroke-opacity': '0.45',
+        class: 'label-leader',
+        'data-label-leader': 'true',
+      });
+      svg.append(leader);
+    }
     const label = svgNode('text', {
-      x: String(x),
+      x: String(anchor === 'middle' ? (left + right) / 2 : anchor === 'end' ? right : left),
       y: String(labelY),
       'text-anchor': anchor,
       fill: statusColor(status),

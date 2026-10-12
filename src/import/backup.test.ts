@@ -16,7 +16,7 @@ import { loadHealthRecord, saveHealthRecord } from '../storage/indexedDb';
 const record: HealthRecord = {
   ...emptyHealthRecord(),
   profile: { displayName: 'Alex Demo', identityConfirmed: true },
-  medications: [{ id: 'med-bp', nameZh: '示例药', nameEn: 'Example med', linkedIndicatorIds: ['bp'] }],
+  medications: [{ id: 'med-bp', nameZh: '示例药', nameEn: 'Example med', linkedIndicatorIds: ['bp'], monitoringNote: null }],
   regimenStages: [{
     id: 'stage-bp', medicationId: 'med-bp', strengthLabel: '5 mg', doseAmount: '1', doseUnit: 'tablet',
     frequency: 'Daily', form: null, packCountLabel: null, startDate: null, endDate: null,

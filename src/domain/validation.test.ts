@@ -7,7 +7,7 @@ const validRecord: HealthRecord = {
   ...emptyHealthRecord(),
   profile: { displayName: 'Alex Demo', identityConfirmed: true },
   medications: [{
-    id: 'med-1', nameZh: '示例药物', nameEn: 'Example medicine', linkedIndicatorIds: ['glucose'],
+    id: 'med-1', nameZh: '示例药物', nameEn: 'Example medicine', linkedIndicatorIds: ['glucose'], monitoringNote: null,
   }],
   regimenStages: [{
     id: 'stage-1', medicationId: 'med-1', strengthLabel: '10 mg', doseAmount: '1', doseUnit: 'tablet',

@@ -165,11 +165,11 @@ export function createRegimenStageForm(
   inputField(form, '服用频率', 'stage-frequency', 'text', stage?.frequency ?? '', true);
   inputField(form, '剂型（可选）', 'stage-form', 'text', stage?.form ?? '');
   inputField(form, '包装数量（可选，如 200 tablets）', 'stage-pack-count', 'text', stage?.packCountLabel ?? '');
-  inputField(form, '开始日期（可留空=未知）', 'stage-start-date', 'date', stage?.startDate ?? '');
-  inputField(form, '结束日期（可留空=未知）', 'stage-end-date', 'date', stage?.endDate ?? '');
+  inputField(form, '开始日期（可留空则不显示）', 'stage-start-date', 'date', stage?.startDate ?? '');
+  inputField(form, '结束日期（可留空=仍使用）', 'stage-end-date', 'date', stage?.endDate ?? '');
   const help = document.createElement('p');
   help.className = 'form-help';
-  help.textContent = '包装数量与规格、单次剂量分开填写。切勿把“200 tablets”填成 200 mg。日期未知请留空；结束早于开始会被拒绝。';
+  help.textContent = '规格与服用频率必填。结束日期留空表示仍使用。包装数量不要填进规格。保存请点本表单底部按钮（不是上方的「保存药物身份」）。';
   form.append(help);
 
   const actions = document.createElement('div');

@@ -72,17 +72,20 @@ describe('SVG trend chart', () => {
     expect(svg.querySelector('[data-category="high"]')?.getAttribute('fill')).toBe('#b42332');
   });
 
-  it('marks each report range near the measurement and connects a band only for consistent lab/method', () => {
+  it('draws full-width dashed limit lines with readable labels when limits are shared', () => {
     const svg = renderIndicatorChart(sample);
-    expect(svg.querySelectorAll('[data-point-range="true"]').length).toBeGreaterThan(0);
-    expect(svg.querySelectorAll('[data-range-band="true"]').length).toBeGreaterThan(0);
-    expect(svg.querySelector('[data-report-range-label="true"]')?.textContent).toContain('该次报告参考范围');
-    const band = svg.querySelector('[data-range-band="true"][data-reference="lower"]');
-    const high = svg.querySelector('[data-range-band="true"][data-reference="upper"]');
-    expect(Number(band?.getAttribute('data-y'))).toBeGreaterThan(Number(high?.getAttribute('data-y')));
+    const lower = svg.querySelector('[data-full-width-limit="true"][data-reference="lower"]');
+    const upper = svg.querySelector('[data-full-width-limit="true"][data-reference="upper"]');
+    expect(lower).not.toBeNull();
+    expect(upper).not.toBeNull();
+    expect(lower?.getAttribute('x1')).toBe(lower ? String(Number(lower.getAttribute('x1'))) : '');
+    expect(Number(lower?.getAttribute('x2'))).toBeGreaterThan(Number(lower?.getAttribute('x1')));
+    expect(svg.querySelector('[data-report-range-label="true"][data-reference-label="lower"]')?.textContent).toMatch(/下限/);
+    expect(svg.querySelector('[data-report-range-label="true"][data-reference-label="upper"]')?.textContent).toMatch(/上限/);
+    expect(Number(lower?.getAttribute('data-y'))).toBeGreaterThan(Number(upper?.getAttribute('data-y')));
   });
 
-  it('does not draw one continuous band across lab/method changes', () => {
+  it('uses the most recent report limits for full-width lines when limits differ, with date in the label', () => {
     const series: ChartSeries = {
       ...sample,
       referenceRange: { lower: null, upper: null },
@@ -93,9 +96,10 @@ describe('SVG trend chart', () => {
       ],
     };
     const svg = renderIndicatorChart(series);
-    const bands = [...svg.querySelectorAll('[data-range-band="true"][data-reference="lower"]')];
-    expect(bands).toHaveLength(1); // only Lab A segment connects
-    expect(svg.querySelectorAll('[data-point-range="true"][data-reference="lower"]')).toHaveLength(3);
+    expect(svg.querySelectorAll('[data-full-width-limit="true"][data-reference="lower"]')).toHaveLength(1);
+    expect(svg.querySelector('[data-reference="lower"]')?.getAttribute('data-reference-value')).toBe('2');
+    expect(svg.querySelector('[data-reference="upper"]')?.getAttribute('data-reference-value')).toBe('9');
+    expect(svg.querySelector('[data-report-range-label="true"]')?.textContent).toContain('2026-01-01');
     // Third point still classified from its own limits
     expect(svg.querySelector('[data-date="2026-01-01"]')?.getAttribute('data-category')).toBe('in-range');
   });
@@ -108,6 +112,7 @@ describe('SVG trend chart', () => {
     };
     const svg = renderIndicatorChart(onePoint);
     expect(svg.querySelector('[data-reference="lower"]')).toBeNull();
+    expect(svg.querySelector('[data-reference-missing="lower"]')?.textContent).toContain('报告未提供下限');
     expect(svg.querySelector('[data-reference="upper"]')).not.toBeNull();
     expect(svg.querySelectorAll('.data-point')).toHaveLength(1);
     const noRange = renderIndicatorChart({
@@ -116,6 +121,8 @@ describe('SVG trend chart', () => {
       referenceRange: { lower: null, upper: null },
     });
     expect(noRange.querySelector('[data-reference]')).toBeNull();
+    expect(noRange.querySelector('[data-reference-missing="lower"]')?.textContent).toContain('报告未提供下限');
+    expect(noRange.querySelector('[data-reference-missing="upper"]')?.textContent).toContain('报告未提供上限');
   });
 
   it('keeps all historical points when labels crowd and only labels the latest three', () => {

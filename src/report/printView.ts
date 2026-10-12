@@ -17,15 +17,15 @@ function cell(row: HTMLTableRowElement, value: string, heading = false): void {
 }
 
 function period(stage: { startDate: string | null; endDate: string | null }): string {
-  const start = stage.startDate ?? '开始日期未知';
-  const end = stage.endDate ?? '结束日期未知 / 仍在使用';
-  return `${start} - ${end}`;
+  const end = stage.endDate ?? '仍使用';
+  if (stage.startDate) return `${stage.startDate} – ${end}`;
+  return end;
 }
 
 function createMedicationSummary(model: ReportModel): HTMLElement {
   const section = html('section', 'report-medications');
   const title = html('h2');
-  title.textContent = '用药记录 / Medication list';
+  title.textContent = '当前药单 / Current medications';
   section.append(title);
   if (!model.medications.length) {
     const empty = html('p', 'report-note');
@@ -33,10 +33,13 @@ function createMedicationSummary(model: ReportModel): HTMLElement {
     section.append(empty);
     return section;
   }
+  const intro = html('p', 'report-note');
+  intro.textContent = '一张表同时列出药物名称、当前用法与关联观察指标；不再另附重复的“全部用药阶段”清单。阶段为中性时间记录，不表示因果关系或剂量建议。';
+  section.append(intro);
   const wrapper = html('div', 'report-table-wrap');
   const table = html('table', 'report-table');
   const header = html('tr');
-  ['中文名称 / Chinese', 'English name', '用药阶段 / Regimen stages', '关联指标 / Linked indicators']
+  ['药物名称 / Medication', '当前用法 / Label instructions', '主要观察指标 / Related monitoring']
     .forEach((label) => cell(header, label, true));
   const thead = html('thead');
   thead.append(header);
@@ -44,24 +47,34 @@ function createMedicationSummary(model: ReportModel): HTMLElement {
   const tbody = html('tbody');
   for (const rowModel of model.medications) {
     const row = html('tr');
-    cell(row, rowModel.medication.nameZh);
-    cell(row, rowModel.medication.nameEn);
-    const stageText = rowModel.stages.length
-      ? rowModel.stages.map((stage) => `${formatRegimenStageSummary(stage)} · ${period(stage)}`).join('； ')
-      : '尚无用药阶段';
+    cell(row, `${rowModel.medication.nameZh} / ${rowModel.medication.nameEn}`);
+    // Prefer current (open-ended) stage; otherwise join unique stage summaries once.
+    const openStages = rowModel.stages.filter((stage) => stage.endDate === null);
+    const stagesForLabel = openStages.length ? openStages : rowModel.stages;
+    const stageText = stagesForLabel.length
+      ? stagesForLabel.map((stage) => formatRegimenStageSummary(stage)).join('； ')
+      : '用法未录入';
     cell(row, stageText);
-    const linked = model.categories.flatMap((group) => group.series
-      .filter((series) => series.medications.some((item) => item.medicationId === rowModel.medication.id))
-      .map((series) => `${series.nameZh} / ${series.nameEn}`));
-    cell(row, [...new Set(linked)].join('；') || '未关联 / Not linked');
+    const linkedFromIds = rowModel.medication.linkedIndicatorIds;
+    const linkedNames = linkedFromIds.length
+      ? linkedFromIds.map((id) => {
+        const hit = model.categories.flatMap((group) => group.series).find((series) => series.indicatorId === id);
+        return hit ? `${hit.nameZh} / ${hit.nameEn}` : null;
+      }).filter((item): item is string => Boolean(item))
+      : model.categories.flatMap((group) => group.series
+        .filter((series) => series.medications.some((item) => item.medicationId === rowModel.medication.id))
+        .map((series) => `${series.nameZh} / ${series.nameEn}`));
+    const uniqueLinks = [...new Set(linkedNames)];
+    const monitoring = uniqueLinks.length
+      ? uniqueLinks.join('；')
+      : (rowModel.medication.monitoringNote?.trim()
+        || '未关联 / Not linked');
+    cell(row, monitoring);
     tbody.append(row);
   }
   table.append(tbody);
   wrapper.append(table);
   section.append(wrapper);
-  const note = html('p', 'report-note');
-  note.textContent = '用药阶段为中性时间记录，不表示药物导致指标变化，也不提供剂量调整建议。';
-  section.append(note);
   return section;
 }
 
@@ -215,7 +228,7 @@ export interface PrintViewActions {
 }
 
 
-function createProvenanceAppendix(model: ReportModel): HTMLElement {
+export function createProvenanceAppendix(model: ReportModel): HTMLElement {
   const section = html('section', 'report-provenance');
   section.dataset.provenanceAppendix = 'true';
   const title = html('h2');
@@ -342,6 +355,13 @@ export function createPrintView(model: ReportModel, actions: PrintViewActions): 
   const disclaimer = html('p', 'report-disclaimer');
   disclaimer.textContent = '本报告仅整理已录入资料，不提供诊断或治疗建议；药物与指标的并列仅供记录对照，不代表因果关系。参考范围以对应检查报告为准。';
   header.append(title, subject, date, disclaimer);
+  const isDemo = /示范用户|Demo User/i.test(model.profileDisplayName);
+  if (isDemo) {
+    const demoBanner = html('p', 'demo-banner');
+    demoBanner.dataset.demoBanner = 'true';
+    demoBanner.textContent = '示范数据 · 非真实病历 / DEMO — synthetic sample for layout reference only';
+    header.append(demoBanner);
+  }
   root.append(toolbar, header, createMedicationSummary(model), createReportTextSection(model), createAppleHealthSection(model));
 
   root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线标出录入的报告参考上下限，红色箭头仅表示数值超出已录入范围。用药色条为中性时间标记。', model.priorityIndicators, true));
@@ -349,7 +369,7 @@ export function createPrintView(model: ReportModel, actions: PrintViewActions): 
     root.append(chartSection(`相关指标分类 / Category: ${category.category}`, '本分类中的每个指标均使用独立趋势图；不同单位的数值分开显示。', category.series, false));
   }
 
-  root.append(createProvenanceAppendix(model));
+  // Provenance stays in the record; omit appendix from printed/PDF report.
 
   const footer = html('footer', 'report-footer');
   footer.textContent = [

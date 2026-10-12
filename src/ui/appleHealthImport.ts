@@ -36,7 +36,7 @@ export function createAppleHealthImportPanel(
   const heading = el('h3');
   heading.textContent = '导入 Apple 健康数据（手动 XML/ZIP）';
   const note = el('p', 'form-help');
-  note.textContent = '仅在本机解析 iPhone「健康」导出文件；不会上传，也不是 HealthKit 实时连接。不解析 GPS 路线或心电图。';
+  note.textContent = '本机解析 iPhone 健康导出（XML/ZIP）。';
   const supported = el('details');
   const summary = el('summary');
   summary.textContent = '支持的数据类型';

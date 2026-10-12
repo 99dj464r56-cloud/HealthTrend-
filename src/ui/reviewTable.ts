@@ -47,26 +47,41 @@ function sectionTitle(title: string): HTMLHeadingElement {
 function medicationTable(record: HealthRecord): HTMLElement {
   const section = document.createElement('section');
   section.className = 'review-section';
-  section.append(sectionTitle('药物清单 / Medication list'));
+  section.append(sectionTitle('当前药单 / Current medications'));
+  const help = document.createElement('p');
+  help.className = 'muted';
+  help.textContent = '点「添加阶段」或「编辑用法」打开下方表单。结束日期留空表示仍使用；保存后日期会显示在用法摘要中。';
+  section.append(help);
   if (record.medications.length === 0) {
     section.append(createEmptyMessage('目前没有药物'));
     return section;
   }
-  const { table, body } = createTable(['药物 / Medication', '用药阶段 / Stages', '关联指标 / Linked indicators', '操作 / Actions']);
+  const { table, body } = createTable(['药物 / Medication', '当前用法 / Instructions', '关联指标 / Linked', '操作 / Actions']);
   for (const medication of record.medications) {
     const row = body.insertRow();
     row.append(createCell(`${medication.nameZh} / ${medication.nameEn}`));
     const stages = record.regimenStages.filter((stage) => stage.medicationId === medication.id);
-    const stageText = stages.length
-      ? stages.map((stage) => {
-        const start = stage.startDate ?? '开始未知';
-        const end = stage.endDate ?? '结束未知';
-        return `${formatRegimenStageSummary(stage)} (${start}–${end})`;
-      }).join('； ')
-      : '尚无阶段';
-    row.append(createCell(stageText));
+    const open = stages.filter((stage) => stage.endDate === null);
+    const shown = open.length ? open : stages;
+    const stageCell = document.createElement('td');
+    if (!shown.length) {
+      stageCell.textContent = '尚无阶段';
+    } else {
+      for (const stage of shown) {
+        const line = document.createElement('div');
+        line.className = 'stage-line';
+        const label = document.createElement('span');
+        label.textContent = formatRegimenStageSummary(stage);
+        const edit = createAction('编辑用法', 'edit-regimen-stage', stage.id);
+        const del = createAction('删除用法', 'delete-regimen-stage', stage.id);
+        line.append(label, edit, del);
+        stageCell.append(line);
+      }
+    }
+    row.append(stageCell);
     const links = medication.linkedIndicatorIds.map((id) => record.indicators.find((indicator) => indicator.id === id)).filter((item): item is Indicator => Boolean(item));
-    row.append(createCell(links.map((indicator) => `${indicator.nameZh} / ${indicator.nameEn}`).join('、') || '—'));
+    const linkText = links.map((indicator) => `${indicator.nameZh} / ${indicator.nameEn}`).join('、');
+    row.append(createCell(linkText || medication.monitoringNote?.trim() || '—'));
     const actions = document.createElement('td');
     actions.className = 'actions-cell';
     actions.append(
@@ -77,28 +92,6 @@ function medicationTable(record: HealthRecord): HTMLElement {
     row.append(actions);
   }
   section.append(table);
-
-  if (record.regimenStages.length) {
-    const stageHeading = document.createElement('h4');
-    stageHeading.textContent = '全部用药阶段 / All regimen stages';
-    section.append(stageHeading);
-    const stageTable = createTable(['药物', '摘要', '期间', '操作']);
-    for (const stage of record.regimenStages) {
-      const medication = record.medications.find((item) => item.id === stage.medicationId);
-      const row = stageTable.body.insertRow();
-      row.append(createCell(medication ? `${medication.nameZh} / ${medication.nameEn}` : stage.medicationId));
-      row.append(createCell(formatRegimenStageSummary(stage)));
-      row.append(createCell(`${stage.startDate ?? '开始未知'} – ${stage.endDate ?? '结束未知'}`));
-      const actions = document.createElement('td');
-      actions.className = 'actions-cell';
-      actions.append(
-        createAction(`编辑阶段 ${stage.id}`, 'edit-regimen-stage', stage.id),
-        createAction(`删除阶段 ${stage.id}`, 'delete-regimen-stage', stage.id),
-      );
-      row.append(actions);
-    }
-    section.append(stageTable.table);
-  }
   return section;
 }
 

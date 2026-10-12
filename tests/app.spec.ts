@@ -1,21 +1,27 @@
 import { expect, test } from '@playwright/test';
 
-test('first run explains local privacy and shows an empty record state', async ({ page }) => {
+test('landing offers guest, personal, and demo modes', async ({ page }) => {
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: 'Health Trend PDF' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '你的资料只保存在此设备' })).toBeVisible();
-  await expect(page.getByText('还没有健康记录')).toBeVisible();
-  await expect(page.getByRole('button', { name: '开始整理' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'HealthTrend' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '选择使用方式' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '进入访客模式' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '进入我的档案' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '查看示范' })).toBeVisible();
+  await expect(page.getByText('资料仅保存在本浏览器')).toBeVisible();
 });
 
 test('a person can add, edit, delete, and back up medicine and lab data', async ({ page }) => {
-  await page.goto('./');
-  await page.getByRole('button', { name: '开始整理' }).click();
-  await expect(page.getByRole('heading', { name: '健康记录工作区' })).toBeVisible();
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.goto('./?mode=guest');
+  await expect(page.getByRole('heading', { name: '健康记录' })).toBeVisible();
 
   await page.getByLabel('档案显示名').fill('Alex Demo');
   await page.getByLabel('我确认以上显示名对应该档案所属人').check();
+  // The save commits to IndexedDB and then re-renders the whole workspace; wait for the old
+  // form to detach so later fills don't land in inputs that are about to be replaced.
+  const oldProfileForm = await page.$('#profile-form');
   await page.getByRole('button', { name: '保存档案身份' }).click();
+  await page.waitForFunction((form) => !form?.isConnected, oldProfileForm);
   await expect(page.getByLabel('档案显示名')).toHaveValue('Alex Demo');
 
   await page.getByLabel('中文药名').fill('示例降压药');
@@ -24,12 +30,14 @@ test('a person can add, edit, delete, and back up medicine and lab data', async 
   await page.getByLabel('English medication name').press('Enter');
   await expect(page.getByRole('cell', { name: '示例降压药 / Example blood pressure medicine' })).toBeVisible();
 
+  await page.getByRole('button', { name: '添加阶段 示例降压药' }).click();
+  await expect(page.locator('#regimen-stage-form')).toBeVisible();
   await page.getByLabel('规格（如 5 mg，不是包装数量）').fill('10 mg');
   await page.getByLabel('单次剂量数量（如 1）').fill('1');
   await page.getByLabel('单次剂量单位（如 tablet / 片）').fill('tablet');
   await page.getByLabel('服用频率').fill('每日晚间一次');
   await page.getByLabel('包装数量（可选，如 200 tablets）').fill('30 tablets');
-  await page.getByLabel('包装数量（可选，如 200 tablets）').press('Enter');
+  await page.getByRole('button', { name: '添加用药阶段（保留历史）' }).click();
   await expect(page.getByText('每日晚间一次').first()).toBeVisible();
   await expect(page.getByText(/30 tablets/).first()).toBeVisible();
 
@@ -55,7 +63,6 @@ test('a person can add, edit, delete, and back up medicine and lab data', async 
   await page.getByLabel(/检查数值（μmol\/L/).fill('90');
   await page.getByRole('button', { name: '保存检查结果' }).click();
   await expect(page.getByText(/90 μmol\/L/)).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: '删除结果 2025-03-11' }).click();
   await expect(page.getByText('暂无已确认结果')).toBeVisible();
 
@@ -64,14 +71,11 @@ test('a person can add, edit, delete, and back up medicine and lab data', async 
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/health-record.*\.json/i);
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: '删除药物 示例降压药' }).click();
   await expect(page.getByText('目前没有药物')).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: '删除指标 肌酐' }).click();
   await expect(page.getByText('目前没有已确认的检查指标')).toBeVisible();
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#backup-import').setInputFiles({
     name: 'synthetic-backup.json',
     mimeType: 'application/json',
@@ -79,7 +83,7 @@ test('a person can add, edit, delete, and back up medicine and lab data', async 
       schemaVersion: 4,
       profile: { displayName: 'Alex Demo', identityConfirmed: true },
       medications: [{
-        id: 'imported-med', nameZh: '备份药', nameEn: 'Backup medicine', linkedIndicatorIds: [],
+        id: 'imported-med', nameZh: '备份药', nameEn: 'Backup medicine', linkedIndicatorIds: [], monitoringNote: null,
       }],
       regimenStages: [],
       indicators: [],
@@ -92,7 +96,7 @@ test('a person can add, edit, delete, and back up medicine and lab data', async 
   await expect(page.getByRole('cell', { name: '备份药 / Backup medicine' })).toBeVisible();
   await expect(page.getByText('目前没有已确认的检查指标')).toBeVisible();
 
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: '删除全部本机资料' }).click();
-  await expect(page.getByText('还没有健康记录')).toBeVisible();
+  await page.getByRole('button', { name: '清空当前档案' }).click();
+  await expect(page.getByRole('heading', { name: '健康记录' })).toBeVisible();
+  await expect(page.getByText('目前没有药物')).toBeVisible();
 });

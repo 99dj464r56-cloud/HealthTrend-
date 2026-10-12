@@ -1,77 +1,45 @@
-# Health Trend PDF
+# HealthTrend
 
-一个纯静态网页工具：在浏览器本机整理药物与体检指标，查看分组趋势，并通过浏览器的“打印 / 保存为 PDF”生成双语 A4 横向报告。界面中“重要指标”单独列出；其余指标按检查类别分组，每个指标各有一张图。
+**本机健康趋势整理** — 化验、药盒与报告草稿留在你的设备上；需要换机或备份时，导出的是**加密**文件，不是明文病历。
 
-## 使用
+> 不是问诊机器人，也不替你判断「正不正常」。参考区间来自你录入／报告上的数值；OCR 只出草稿，保存前必须人工核对。
 
-打开部署好的网页后：
+## 为什么特别
 
-1. 手动录入药物、剂量、用法和检查指标，或选择/拍摄 JPG、PNG、WebP 照片，或导入 PDF。
-2. 等待本机识别。每份文件最多 20 MB；PDF 最多 20 页。扫描版 PDF 会逐页 OCR。
-3. 对照原始资料检查识别草稿，补齐名称、日期、单位、分类和用途，再逐条确认。没有识别出的药物资料可以在药物表单中手动录入；不要把包装上的药物规格当作化验结果。
-4. 为药物关联需要一起观察的指标，并填写用药剂量/期间。该并列只用于记录对照，不推断药物与指标变化存在因果关系。
-5. 选择“预览趋势报告 / PDF”，检查报告（含来源附录：文件／页码／确认状态／模板版本），再选择“打印 / 保存为 PDF”。重要指标会在重点区与所属类别区各出现一次。
-6. 使用 JSON 备份/恢复，在更换浏览器或设备前保存、搬移自己的记录。
+| 点 | 说明 |
+|----|------|
+| 资料本机 | IndexedDB；无账号、无上传、无分析埋点 |
+| 观察自带区间 | 上下限跟每一次化验走，不套通用「正常值」 |
+| 照片 OCR 草稿 | 浏览器内识别，确认后才入库 |
+| 加密 iCloud 备份 | `health-trend-personal.enc.json`；Mac 可自动写进备份文件夹，iPhone 用「备份到 iCloud」分享到「文件」 |
+| 三模式 | 访客试玩 · 演示合成数据 · 个人加密档案 |
+| Mac App | `/Applications/HealthTrend.app`，Touch ID 解锁 + 打印 |
+| 家用多档案 | 路线图：同一设备多个人独立保险库（尚未做） |
 
-7. （可选）导入 iPhone「健康」App 导出的 `export.xml` 或包含该文件的 ZIP。选择文件后在本机解析并预览；筛选类别与日期后确认，才写入本机记录。**不是** HealthKit 实时同步，也不会写回 Apple 健康。
+## 快速开始
 
-### Apple 健康手动导入（支持的类型）
-
-仅本机文件导入；不上传 XML/ZIP。当前支持：
-
-- 数值样本 `Record`：`HKQuantityTypeIdentifierStepCount`（步数）、`ActiveEnergyBurned`（活动能量）、`DistanceWalkingRunning`（步行+跑步距离）、`HeartRate`（心率）、`BodyMass`（体重）、`AppleExerciseTime`（锻炼时长）
-- `Workout` 训练记录（活动类型 + 时长；**忽略** WorkoutRoute / GPS）
-- `ActivitySummary` 每日活动摘要（活动能量 / 锻炼分钟 / 站立小时）
-
-未知或非数值类型计入预览的“不支持/跳过”，不会猜测导入。活动类数据与化验指标分开分类与排版，不混用坐标轴。安全上限：文件 ≤ 40 MiB、解压后 XML ≤ 80 MiB、ZIP 条目 ≤ 50、记录 ≤ 50_000、节点深度 ≤ 32。
-
-数据模型为 schema **v4**（含 `appleHealthRecords`）；旧备份加载时自动迁移，失败则保留原 IndexedDB 内容不动。
-
-参考上下限来自用户录入的原始报告；空白限值不会自动套用通用标准。图表显示报告日期（含年份）和最近三次的日期/数值；低于或高于已录入限值时，以红色和箭头标示。若报告没有数据，图表会明确显示空状态，而不是伪造趋势。
-
-## 隐私与限制
-
-### 备份与恢复
-
-- JSON 备份含 schema 版本；导入前显示预览（条数、档案名、是否需迁移）。当前冲突策略为 **replace-all**（替换本机全部记录）或取消；解析失败不会写入 IndexedDB。
-- **可选加密导出尚未实现**；请将备份视为敏感明文妥善保管。
-
-### 离线能力说明（如实）
-
-- **已验证（单元测试）**：IndexedDB 读写、JSON 备份预览／解析、报告模型构建在无 `fetch` 时仍可完成。
-- **未宣称“完全离线开箱即用”**：首次打开仍需从同源静态站点加载应用脚本；**首次 OCR** 还需下载约 36 MiB 的 worker／WASM／中英文模型。模型缓存后，再次 OCR 可不依赖外网，但仍取决于浏览器缓存是否还在。
-- 本应用**没有**断网环境下的完整 Playwright e2e 证明；请勿将“本机保存”理解为可永久离线安装包。
-
-
-- 应用不设账号、后端数据库、分析或上传接口。记录只保存在当前浏览器的 IndexedDB；原始照片/PDF和原始 OCR 文本不会被保存，只有人工核对后确认的字段进入记录。
-- PDF 解析和图像 OCR 都在浏览器本机运行。首次 OCR 会从当前网页所在的静态站点下载 PDF/OCR worker、WebAssembly 和中英文语言模型，合计约 36 MiB；模型可在浏览器缓存。此后只请求同源静态资源，不会把报告内容发送给这些请求。
-- 文件上限为 20 MB，PDF 上限为 20 页。HEIC/TIFF 当前需先转换为 JPG/PNG。OCR 不可靠时可改为手动录入；必须对照原报告核对所有值、单位、日期和范围。
-- 清理浏览器站点数据可能删除记录。JSON 备份包含敏感健康资料，请妥善保管。
-- 本工具只用于个人资料整理，不提供诊断或治疗建议，也不能替代医生或原始检查报告。
-
-详见 [隐私说明](PRIVACY.md)、[安全政策](SECURITY.md) 和 [第三方组件说明](THIRD_PARTY_NOTICES.md)。
-
-## 本机开发
-
-需要 Node.js 22 或更新版本。
-
-```sh
+```bash
 npm ci
-npm run dev
+npm run dev          # http://localhost:5173 — 个人模式请用 localhost（Touch ID / WebAuthn）
 npm test
-npm run build
-npm run audit:public
-npm run preview
+npm run build:pages  # GitHub Pages 安全构建（无个人种子，base=/HealthTrend-/）
 ```
 
-`npm run build` 会从锁定的 npm 包复制同源 OCR runtime 资产到被忽略的 `public/ocr/`，再构建 `dist/`；不要把语言模型或用户资料提交到 Git。发布前可用：
+Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**。个人档案改动后点横幅 **「备份到 iCloud」**，在「文件」里存到 iCloud 云盘。
 
-```sh
-npm run test:release
-```
+## 仓库与作业页
 
-GitHub Pages 的项目子路径由部署工作流设置为 `/health-trend-pdf/`。本机可用 `VITE_BASE_PATH=/health-trend-pdf/ npm run build` 验证同类子路径。
+- 作业远程：`https://github.com/99dj464r56-cloud/HealthTrend-`
+- Pages（启用 Actions 后）：`https://99dj464r56-cloud.github.io/HealthTrend-/`
+- 设计／计划：`docs/superpowers/`
+- 隐私约定：`PRIVACY.md`
 
-## 技术与许可
+## 安全注意
 
-Vite + TypeScript；IndexedDB 本机记录；PDF.js 抽取文字；Tesseract.js 中英文 OCR；SVG 折线图；浏览器打印生成 PDF。项目代码使用 MIT 许可。第三方库与语言数据的许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 公开构建与分享包**不得**包含 `public/seeds/personal-backup.json` 或任何真实病历。
+- 演示数据仅为合成样本；截图不含真实姓名／药名／生日。
+- 不要把恢复口令写进仓库或截图。
+
+## License
+
+仅供个人／课程作业使用；请勿把他人健康资料提交到公开仓库。

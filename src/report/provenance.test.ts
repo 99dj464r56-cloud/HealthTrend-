@@ -33,7 +33,7 @@ function obs(partial: Partial<Observation> & Pick<Observation, 'id' | 'indicator
   };
 }
 
-describe('PDF provenance appendix and dual priority display', () => {
+describe('PDF provenance data retained; appendix omitted from print', () => {
   it('includes template id, sources, confirmation, and revision notes in the print view', () => {
     const record: HealthRecord = {
       ...emptyHealthRecord(),
@@ -50,11 +50,11 @@ describe('PDF provenance appendix and dual priority display', () => {
       sourceFileName: 'demo.pdf', pageNumber: 1, confirmed: true, laboratory: 'Lab A',
     });
     const view = createPrintView(model, { onPrint: () => undefined, onBack: () => undefined });
-    expect(view.querySelector('[data-provenance-appendix]')).not.toBeNull();
+    // Provenance remains on the model / in IndexedDB, but the printed report omits the appendix.
+    expect(view.querySelector('[data-provenance-appendix]')).toBeNull();
     expect(view.textContent).toContain('health-trend-pdf-report@');
-    expect(view.textContent).toContain('demo.pdf');
-    expect(view.textContent).toContain('已确认');
-    expect(view.textContent).toContain('原始文件留存');
+    expect(view.textContent).not.toContain('附录：资料来源');
+    expect(model.provenance.observations[0]?.confirmed).toBe(true);
   });
 
   it('keeps priority indicators in both highlight and category sections at modest scale', () => {

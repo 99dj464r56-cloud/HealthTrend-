@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 test('renders separate priority/category charts and exports the synthetic A4 landscape PDF', async ({ page }) => {
   page.on('dialog', (dialog) => dialog.accept());
-  await page.goto('./');
-  await page.getByRole('button', { name: '开始整理' }).click();
+  await page.goto('./?mode=guest');
   await page.locator('#backup-import').setInputFiles({
     name: 'synthetic-record.json', mimeType: 'application/json',
     buffer: readFileSync(fileURLToPath(new URL('./fixtures/synthetic-record.json', import.meta.url))),
@@ -19,9 +18,9 @@ test('renders separate priority/category charts and exports the synthetic A4 lan
   await expect(page.getByRole('heading', { name: /Category: Synthetic group/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Category: 血细胞分析/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Category: 肝功能/ })).toBeVisible();
-  await expect(page.getByText(/附录：资料来源与可追溯信息|Provenance appendix/)).toBeVisible();
-  await expect(page.locator('[data-provenance-appendix]')).toContainText('health-trend-pdf-report@');
-  await expect(page.locator('[data-provenance-appendix]')).toContainText('synthetic-lab-b-2026.pdf');
+  await expect(page.locator('[data-provenance-appendix]')).toHaveCount(0);
+  await expect(page.getByText(/附录：资料来源与可追溯信息|Provenance appendix/)).toHaveCount(0);
+  await expect(page.locator('.report-footer')).toContainText('health-trend-pdf-report@');
   await expect(page.locator('.priority-section .chart-card')).toHaveCount(2);
   await expect(page.locator('.category-section .chart-card')).toHaveCount(4);
   const priorityMarker = page.locator('.priority-section .chart-card').filter({ hasText: '合成示例指标' });

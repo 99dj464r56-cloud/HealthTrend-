@@ -83,6 +83,10 @@ function assertMedication(value: unknown): asserts value is Medication {
   assert(isText(value.id), 'Medication ID is required.');
   assert(isText(value.nameZh) && isText(value.nameEn), 'Medication names in Chinese and English are required.');
   assert(Array.isArray(value.linkedIndicatorIds) && value.linkedIndicatorIds.every(isText), 'Medication indicator links are invalid.');
+  assert(
+    value.monitoringNote === null || typeof value.monitoringNote === 'string',
+    'Medication monitoringNote must be text or null.',
+  );
 }
 
 export function assertRegimenStageDates(startDate: string | null, endDate: string | null): void {

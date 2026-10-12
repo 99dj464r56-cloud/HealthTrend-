@@ -164,3 +164,89 @@ h1, h2, p { margin-top: 0; }
   overflow-x: auto;
   margin-bottom: 1rem;
 }
+
+.import-candidate-med { border-color: #9eb6d4; background: #f7fbff; }
+.stage-line { display: flex; flex-wrap: wrap; gap: 0.35rem 0.75rem; align-items: center; margin: 0.15rem 0; }
+
+.capture-priority-panel { margin: 1rem 0 0.5rem; padding: 0.75rem 1rem; border: 1px solid #c5d6ea; border-radius: 8px; background: #f3f8fd; }
+.manual-entry-bottom { margin-top: 1.5rem; border-style: dashed; }
+.manual-entry-bottom + .forms-grid { margin-top: 0.5rem; }
+
+
+/* Mode chooser + compact chrome */
+.mode-chooser-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 18px 0 22px;
+}
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 5px 20px #1b34440a;
+}
+.mode-card h3 { margin: 0; font-size: 18px; }
+.mode-card p { margin: 0; color: var(--muted); line-height: 1.5; flex: 1; }
+.mode-card-personal { border-left: 4px solid var(--blue); }
+.mode-switch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.privacy-notice-compact {
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #334657;
+  background: #edf5fb;
+  border: 1px solid #d5e5f1;
+  border-radius: 8px;
+}
+
+.mode-card-demo { border-left: 4px solid #b45309; }
+.demo-banner {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- Personal lock / encrypted backup ---- */
+.lock-shell { display: flex; align-items: flex-start; justify-content: center; padding: 64px 16px; min-height: 100vh; }
+.lock-card { width: min(460px, 100%); background: #fff; border: 1px solid #d8dee8; border-radius: 14px; padding: 28px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); display: grid; gap: 12px; }
+.lock-card h2 { margin: 0; font-size: 1.35rem; }
+.lock-card h3 { margin: 8px 0 0; font-size: 1rem; }
+.lock-badge { justify-self: start; font-size: 0.75rem; padding: 2px 10px; border-radius: 999px; background: #e8f0fe; color: #1d4ed8; }
+.lock-warning { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fff4e5; border: 1px solid #f5c26b; color: #8a4b00; font-weight: 600; }
+.lock-divider { margin: 4px 0 0; text-align: center; color: #64748b; font-size: 0.85rem; }
+.lock-restore { border-top: 1px solid #e2e8f0; padding-top: 12px; }
+.touchid-row { display: grid; gap: 6px; }
+.touchid-button { width: 100%; font-size: 1rem; padding: 12px; }
+.touchid-button::before { content: '☝︎ '; }
+.backup-status { font-size: 0.85rem; color: #166534; }
+.backup-status[data-state='error'], .backup-status[data-state='unset'] { color: #b42318; }
+.backup-status[data-state='saving'] { color: #64748b; }
+.mode-switch-bar { flex-wrap: wrap; gap: 8px 12px; }
+.lock-button { margin-left: auto; }
+
+/* Mobile encrypted backup banner (Safari / PWA) */
+.mobile-backup-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin: 8px 0 12px; padding: 12px 14px; border-radius: 12px;
+  background: #e8f0fe; border: 1px solid #bfdbfe; color: #1e3a8a;
+}
+.mobile-backup-banner[hidden] { display: none !important; }
+.mobile-backup-banner.mobile-backup-stale { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+.mobile-backup-text { margin: 0; flex: 1 1 220px; font-size: 0.92rem; line-height: 1.4; }
+.mobile-backup-banner .primary-button { white-space: nowrap; }

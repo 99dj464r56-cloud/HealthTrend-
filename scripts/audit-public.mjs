@@ -9,7 +9,8 @@ const expectedBase = process.env.VITE_BASE_PATH ?? '/';
 const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8' })
   .split('\n').filter(Boolean);
 const forbiddenMedia = /\.(?:pdf|jpe?g|png|webp|heic|tiff?)$/i;
-const forbiddenPaths = tracked.filter((path) => forbiddenMedia.test(path));
+const allowedMedia = /^(?:public\/icons\/|docs\/screenshots\/|build\/icon\.svg$)/;
+const forbiddenPaths = tracked.filter((path) => forbiddenMedia.test(path) && !allowedMedia.test(path));
 if (forbiddenPaths.length) fail(`source reports or personal media are included: ${forbiddenPaths.join(', ')}`);
 
 const sourceExtensions = new Set(['.md', '.ts', '.tsx', '.json', '.html', '.css', '.yml', '.yaml', '.mjs']);
@@ -22,7 +23,7 @@ for (const path of tracked.filter((file) => sourceExtensions.has(extname(file)))
 
 const dist = resolve(root, 'dist');
 const index = await readFile(join(dist, 'index.html'), 'utf8');
-if (!index.includes('Health Trend PDF')) fail('built app shell is missing its title.');
+if (!index.includes('HealthTrend')) fail('built app shell is missing its title.');
 if (!index.includes(`${expectedBase}assets/`)) fail(`built app shell does not use configured base path ${expectedBase}.`);
 if (/\b(?:src|href)=["']https?:\/\//i.test(index)) fail('built HTML contains a remote script or stylesheet.');
 

@@ -39,6 +39,8 @@ export interface Medication {
   nameZh: string;
   nameEn: string;
   linkedIndicatorIds: string[];
+  /** Codex/label monitoring text when no HR/BP (etc.) indicator exists to link. */
+  monitoringNote: string | null;
 }
 
 export interface MedicationRegimenStage {

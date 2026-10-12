@@ -12,7 +12,8 @@
       "linkedIndicatorIds": [
         "synthetic-marker",
         "wbc-synthetic"
-      ]
+      ],
+      "monitoringNote": null
     }
   ],
   "indicators": [
