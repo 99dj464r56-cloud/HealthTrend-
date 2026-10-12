@@ -11,8 +11,8 @@ HealthTrend keeps health data on the device you use. There is no HealthTrend acc
 ## Personal vault
 
 - Personal mode encrypts the record at rest (PBKDF2-SHA256 → KEK wraps DEK → AES-GCM).
-- Unlock with a recovery password; optional Touch ID (WebAuthn PRF in Chromium `localhost`, or Electron Keychain helper on Mac).
-- Encrypted backup file: `health-trend-personal.enc.json`. Desktop can write it into a chosen/iCloud folder; on iPhone/iPad Safari the **「备份到 iCloud」** banner shares or downloads that file into the Files app. Ciphertext only — the password is never stored in the backup file.
+- Unlock with a recovery password; optional Touch ID (WebAuthn PRF in Chromium `localhost`, or Electron Keychain helper on Mac). The native Keychain item is device-bound but has no biometric ACL; Electron performs the Touch ID gate.
+- Encrypted backup file: `health-trend-personal.enc.json`. Desktop can write it into a chosen/iCloud folder; on iPhone/iPad Safari the **「生成加密备份」** banner initiates sharing or downloading. Only explicit user confirmation records a manual save; neither download nor local write proves iCloud sync or successful restore. Ciphertext only — the password is never stored in the backup file.
 - Public / GitHub Pages / share builds (`VITE_SHARE_BUILD=1`) never ship a personal seed. Personal mode starts empty.
 
 ## What you must still protect
@@ -24,3 +24,7 @@ HealthTrend keeps health data on the device you use. There is no HealthTrend acc
 ## Medical disclaimer
 
 This project is not a medical device or EMR. It does not diagnose or recommend treatment. Verify every transcription against the original report and consult a clinician for care decisions.
+
+## Local recovery source
+
+The optional localhost backup middleware can read a plaintext `_pending-restore.json` from the configured backup directory. Only a completely empty personal vault is eligible, and import requires identity/count confirmation plus exact encrypted read-back verification. Existing records use the manual import preview. Source recovery files are retained; remove them manually after verifying recovery. Never put these files into the public build directory.

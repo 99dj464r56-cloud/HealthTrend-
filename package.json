@@ -16,7 +16,8 @@
     "build:share": "node scripts/build-share.ts",
     "build:mac": "node scripts/build-mac-app.ts",
     "build:pages": "node scripts/build-pages.ts",
-    "audit:pages": "VITE_BASE_PATH=/HealthTrend-/ node scripts/audit-public.mjs"
+    "audit:pages": "VITE_BASE_PATH=/HealthTrend-/ node scripts/audit-public.mjs",
+    "test:release:pages": "npm test && npm run build:pages && npm run audit:pages && npm run test:e2e"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",

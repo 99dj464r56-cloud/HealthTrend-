@@ -56,7 +56,7 @@ test('first-time setup shows the warning, validates, encrypts and backs up to th
   await page.getByLabel(/再次输入恢复密码/).fill(PASSWORD);
   await page.getByRole('button', { name: '设置恢复密码并加密' }).click();
   await saveProfileName(page);
-  await expect(page.locator('[data-backup-status]')).toContainText('已备份到 iCloud', { timeout: 15_000 });
+  await expect(page.locator('[data-backup-status]')).toContainText('云同步未验证', { timeout: 15_000 });
   await page.screenshot({ path: join(SHOTS, '03-backup-status.png') });
 
   // Encrypted at rest in IndexedDB: no plaintext record, ciphertext does not contain the name.

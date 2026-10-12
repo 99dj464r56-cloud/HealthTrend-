@@ -10,12 +10,12 @@ import {
   formatBackupPreviewSummary,
   previewBackup,
 } from '../import/backup';
-import { clearHealthRecord, loadHealthRecord, putVaultMeta, saveHealthRecord, setActiveWorkspace, setSessionKey } from '../storage/indexedDb';
+import { clearHealthRecord, loadHealthRecord, putVaultMeta, saveHealthRecord, saveHealthRecordIfUnchanged, setActiveWorkspace, setSessionKey } from '../storage/indexedDb';
 import { runPersonalGate, type PersonalSession } from './personalLock';
 import { buildBackupFile } from '../security/vault';
 import { chooseBackupFolder, folderPickerSupported, getBackupFolderName, isServerBackupEnabled, saveEncryptedBackup, BackupUnavailableError } from '../security/backupClient';
-import { bumpMobileBackupChanges, mobileBackupStale, recordMobileBackupSuccess, shareEncryptedBackupFile, shouldOfferManualBackupBanner } from '../security/mobileBackup';
-import { clearPendingRestore, fetchPendingRestore, isSparseRecord } from '../security/pendingRestore';
+import { getBackupRevision, confirmMobileBackupSaved, hasUnconfirmedBackup, bumpMobileBackupChanges, mobileBackupStale, recordMobileBackupSuccess, shareEncryptedBackupFile, shouldOfferManualBackupBanner } from '../security/mobileBackup';
+import { restorePendingRecord, fetchPendingRestore, isSparseRecord } from '../security/pendingRestore';
 import { nativeBridge } from '../native/bridge';
 import { createPrivacyNotice } from './privacyNotice';
 import { chooserHref, resolveWorkspaceMode, workspaceHref, type WorkspaceMode } from '../workspace/mode';
@@ -201,6 +201,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   setActiveWorkspace(mode);
 
+  let pendingRestoreError = "";
   let session: PersonalSession | null = null;
   let record: HealthRecord | null;
   if (mode === 'personal') {
@@ -208,21 +209,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     // used once, during first-time password setup (migration), never after a vault exists.
     session = await runPersonalGate(root, { onSwitchMode: () => go(chooserHref()) });
     record = session.record;
-    // One-shot recovery: if the unlocked vault is empty/sparse and a pending restore
-    // drop exists in the backup folder, import it and re-encrypt with the existing key.
     if (isSparseRecord(record)) {
       const pending = await fetchPendingRestore();
-      if (pending && !isSparseRecord(pending)) {
-        await saveHealthRecord(pending);
-        const verified = await loadHealthRecord();
-        if (verified && !isSparseRecord(verified)) {
-          record = verified;
-          await clearPendingRestore();
-          session = { ...session, fresh: true };
-        } else {
-          // Keep pending drop if the encrypted write did not round-trip.
-          record = pending;
-          session = { ...session, fresh: true };
+      if (pending) {
+        try {
+          const restored = await restorePendingRecord(record, pending, {
+            confirm: message => window.confirm(message), save: saveHealthRecordIfUnchanged, load: loadHealthRecord,
+          });
+          if (restored) { record = restored; session = { ...session, fresh: true }; }
+        } catch (error) {
+          pendingRestoreError = `恢复失败：${getErrorMessage(error)}。源文件已保留。`;
         }
       }
     }
@@ -256,7 +252,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let regimenStageMedicationId: string | null = null;
   let editingReportText: ReportTextBlock | null = null;
   let importCoverageNote = '';
-  let pageError = '';
+  let pageError = pendingRestoreError;
 
   // ---- Encrypted auto-backup (personal only) ----
   const BACKUP_DEBOUNCE_MS = 3000;
@@ -266,6 +262,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let backupState: { kind: 'idle' | 'saving' | 'ok' | 'error' | 'unset'; text: string } = { kind: 'idle', text: '' };
   const serverBackup = mode === 'personal' ? await isServerBackupEnabled() : false;
   let folderName = mode === 'personal' && !serverBackup ? await getBackupFolderName() : null;
+
+  let currentRevision = mode === 'personal' ? await getBackupRevision() : 0;
 
   function timeText(date: Date): string {
     return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -278,24 +276,31 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     node.dataset.state = backupState.kind;
   }
 
-  async function runBackup(interactive = false): Promise<void> {
+  let backupQueue: Promise<void> = Promise.resolve();
+  function runBackup(interactive = false): Promise<void> {
+    const next = backupQueue.then(() => performBackup(interactive));
+    backupQueue = next.catch(() => undefined);
+    return next;
+  }
+  async function performBackup(interactive = false): Promise<void> {
     if (!session || !record) return;
     const current = session;
     const snapshot = record;
+    const revision = currentRevision;
     backupState = { kind: 'saving', text: '正在备份…' };
     updateBackupStatus();
     try {
       const file = await buildBackupFile(current.meta, current.key, snapshot);
       try {
         const result = await saveEncryptedBackup(file, interactive);
-        const where = result.label ?? (result.target === 'server' ? 'iCloud' : `「${folderName ?? '备份文件夹'}」`);
-        backupState = { kind: 'ok', text: `已备份到 ${where} · ${timeText(result.savedAt)}` };
-        await recordMobileBackupSuccess();
+        const where = result.label ?? (result.target === 'server' ? '本地备份目录' : `「${folderName ?? '备份文件夹'}」`);
+        backupState = { kind: 'ok', text: `已写入 ${where}（云同步未验证） · ${timeText(result.savedAt)}` };
+        await recordMobileBackupSuccess(revision);
       } catch (error) {
         if (interactive && error instanceof BackupUnavailableError) {
           // Mobile / plain browser: one-tap share/download into Files → iCloud.
-          const how = await shareEncryptedBackupFile(file);
-          backupState = { kind: 'ok', text: how === 'share' ? `已分享加密备份 · ${timeText(new Date())}` : `已下载 ${'health-trend-personal.enc.json'} · 请存到 iCloud 文件` };
+          const how = await shareEncryptedBackupFile(file, revision);
+          backupState = { kind: 'unset', text: how === 'share' ? `已发起分享，待确认保存 · ${timeText(new Date())}` : `已生成加密下载 · 待确认保存` };
         } else {
           backupState = error instanceof BackupUnavailableError
             ? { kind: 'unset', text: error.message }
@@ -313,9 +318,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     backupState = { kind: 'saving', text: '准备加密备份…' };
     updateBackupStatus();
     try {
+      const revision = currentRevision;
       const file = await buildBackupFile(session.meta, session.key, record);
-      const how = await shareEncryptedBackupFile(file);
-      backupState = { kind: 'ok', text: how === 'share' ? `已分享到「文件／iCloud」· ${timeText(new Date())}` : `已下载加密备份 · 请在「文件」选 iCloud` };
+      const how = await shareEncryptedBackupFile(file, revision);
+      backupState = { kind: 'unset', text: how === 'share' ? `已发起分享，待确认保存· ${timeText(new Date())}` : `已生成加密下载 · 待确认保存` };
     } catch (error) {
       if ((error as { name?: string }).name === 'AbortError') {
         backupState = { kind: 'unset', text: '已取消分享' };
@@ -323,7 +329,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         backupState = { kind: 'error', text: `备份失败：${getErrorMessage(error)}` };
       }
     }
-    updateBackupStatus();
+    render();
   }
 
   function scheduleBackup(): void {
@@ -375,11 +381,15 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (session?.fresh) scheduleBackup();
   }
 
-  async function commit(next: HealthRecord): Promise<void> {
+  async function persistChange(next: HealthRecord): Promise<void> {
     await saveHealthRecord(next);
+    if (mode === 'personal') currentRevision = await bumpMobileBackupChanges();
     record = next;
     scheduleBackup();
-    if (mode === 'personal') void bumpMobileBackupChanges();
+  }
+
+  async function commit(next: HealthRecord): Promise<void> {
+    await persistChange(next);
     pageError = '';
     editingMedication = null;
     editingIndicator = null;
@@ -455,15 +465,26 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       mobileBanner.hidden = true;
       const mobileText = element('p');
       mobileText.className = 'mobile-backup-text';
-      const mobileBtn = makeButton('备份到 iCloud', 'primary-button');
+      const mobileBtn = makeButton('生成加密备份', 'primary-button');
       mobileBtn.type = 'button';
       mobileBtn.setAttribute('data-mobile-backup-btn', '');
-      mobileBtn.addEventListener('click', () => void shareMobileBackup());
-      mobileBanner.append(mobileText, mobileBtn);
+      mobileBtn.addEventListener('click', () => { mobileBtn.disabled = true; void shareMobileBackup(); });
+      const confirmSaved = makeButton('我已保存此文件', 'secondary-button');
+      confirmSaved.hidden = true;
+      confirmSaved.setAttribute('data-confirm-backup-saved', '');
+      confirmSaved.addEventListener('click', () => void (async () => {
+        try {
+          await confirmMobileBackupSaved();
+          backupState = { kind: 'ok', text: '已确认保存（云同步与恢复未验证）' };
+          render();
+        } catch (error) { pageError = getErrorMessage(error); render(); }
+      })());
+      mobileBanner.append(mobileText, mobileBtn, confirmSaved);
       content.append(mobileBanner);
       void (async () => {
         if (!(await shouldOfferManualBackupBanner())) return;
         const stale = await mobileBackupStale();
+        confirmSaved.hidden = !await hasUnconfirmedBackup();
         mobileText.textContent = stale.stale
           ? `手机／平板请定期加密备份：${stale.reason ?? ''}。点下方按钮，在「文件」中存到 iCloud（如 日常调阅等备份文件夹）。`
           : '建议备份到 iCloud：生成加密文件后，在「文件」App 中选择 iCloud 云盘保存。';
@@ -646,8 +667,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       }
       const observations = [...current.observations, observation];
       const next = { ...current, indicators, observations, sources };
-      await saveHealthRecord(next);
-      record = next;
+      await persistChange(next);
       importCoverageNote = formatImportCoverage(summarizeImportCoverage({
         candidates: 1, confirmed: 1, unrecognizedLines: 0,
       }));
@@ -655,7 +675,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       if (savedRecords) {
         savedRecords.replaceChildren(
           makeSectionHeading('已确认的资料'),
-          createReviewTable(record),
+          createReviewTable(next),
         );
       }
       },

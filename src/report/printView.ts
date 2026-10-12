@@ -364,7 +364,7 @@ export function createPrintView(model: ReportModel, actions: PrintViewActions): 
   }
   root.append(toolbar, header, createMedicationSummary(model), createReportTextSection(model), createAppleHealthSection(model));
 
-  root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线标出录入的报告参考上下限，红色箭头仅表示数值超出已录入范围。用药色条为中性时间标记。', model.priorityIndicators, true));
+  root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线为最新报告对照线，不代表历史范围；点颜色按各次报告范围，红色箭头仅表示数值超出已录入范围。用药色条为中性时间标记。', model.priorityIndicators, true));
   for (const category of model.categories) {
     root.append(chartSection(`相关指标分类 / Category: ${category.category}`, '本分类中的每个指标均使用独立趋势图；不同单位的数值分开显示。', category.series, false));
   }

@@ -98,6 +98,32 @@ export async function saveHealthRecord(record: HealthRecord): Promise<void> {
   await runTransaction('readwrite', (store) => store.put(confirmedRecord, CURRENT_RECORD_KEY));
 }
 
+/** Compare ciphertext inside a single transaction so another tab cannot be overwritten. */
+export async function saveHealthRecordIfUnchanged(record: HealthRecord, expected: HealthRecord): Promise<void> {
+  const key = sessionKey;
+  const databaseName = activeDatabaseName;
+  if (!key) throw new VaultLockedError();
+  const before = await runTransaction<unknown>('readonly', store => store.get(ENCRYPTED_RECORD_KEY), databaseName);
+  if (!isCipherBlob(before)) throw new Error('档案已改变，恢复已停止。');
+  const stored = validateHealthRecord(migrateHealthRecord(await decryptJson(key, before)));
+  if (JSON.stringify(stored) !== JSON.stringify(expected)) throw new Error('档案已改变，恢复已停止。');
+  const blob = await encryptJson(key, validateHealthRecord(record));
+  const database = await openDatabase(databaseName);
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(ENCRYPTED_RECORD_KEY);
+    request.onsuccess = () => {
+      if (JSON.stringify(request.result) !== JSON.stringify(before)) { transaction.abort(); return; }
+      store.put(blob, ENCRYPTED_RECORD_KEY);
+      store.delete(CURRENT_RECORD_KEY);
+    };
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onabort = () => { database.close(); reject(new Error('档案已改变或写入失败，恢复已停止。')); };
+    transaction.onerror = () => { database.close(); reject(transaction.error ?? new Error('恢复写入失败')); };
+  });
+}
+
 /**
  * Load the local record for the active workspace DB, migrating legacy schemas in memory.
  * On migrate/validate failure the raw IndexedDB bytes are left untouched.

@@ -1,6 +1,6 @@
 # HealthTrend — Implementation Plan (毕业作业 2 cut)
 
-## Done / shipping in this package
+## Implemented scope (device acceptance remains separate)
 
 1. Domain model + migrate/validate for medications, regimen stages, indicators, observations, report texts.
 2. IndexedDB workspaces: guest / personal (`health-trend-pdf`) / demo — names frozen.
@@ -19,7 +19,7 @@
 npm test
 npx tsc --noEmit
 npm run build:pages
-npm run audit:public
+npm run audit:pages
 # optional: npm run test:e2e
 ```
 
@@ -31,3 +31,7 @@ Privacy: scan working tree + `git log -p` / `git grep` for personal markers (nam
 - Branch: merge feature → `main`, push (no force).
 - Pages: Actions workflow deploys `dist`; or Settings → Pages → GitHub Actions.
 - Expected URL: `https://99dj464r56-cloud.github.io/HealthTrend-/`
+
+## Acceptance status
+
+See [current verification](../../healthtrend-release-verification-2026-10-13.md). Passing automated browser tests does not confirm native Touch ID, iPhone/iCloud restore, complete printed layout, or cold offline launch.

@@ -169,7 +169,7 @@ function registerIpc() {
     if (!isB64(rawB64) || Buffer.from(rawB64, 'base64').length !== 32) throw new Error('invalid key');
     // Explicit Touch ID consent first (LocalAuthentication sheet — not the login-keychain password dialog).
     await systemPreferences.promptTouchID('启用 HealthTrend 的 Touch ID 解锁');
-    // Persist DEK under a biometry ACL; reading it later shows Touch ID again (device-bound).
+    // Persist DEK in a device-bound Keychain item. Electron gates access with Touch ID; the item itself has no biometry ACL.
     keychain(['store', KC_SERVICE, KC_ACCOUNT, rawB64]);
     return true;
   });

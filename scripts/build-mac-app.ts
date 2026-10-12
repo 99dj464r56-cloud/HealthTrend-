@@ -33,7 +33,9 @@ await rm(join(stage, 'web/seeds/README.md'), { force: true });
 await cp(join(root, 'electron'), join(stage, 'electron'), { recursive: true });
 // Native Touch ID helper must stay outside asar (spawnable Mach-O).
 await mkdir(join(stage, 'native-bin'), { recursive: true });
-await cp(join(root, 'electron/native/keychain-touchid'), join(stage, 'native-bin/keychain-touchid'));
+if (arch !== process.arch) throw new Error('Native helper packaging currently requires MAC_ARCH to match the build host.');
+await rm(join(stage, 'electron/native/keychain-touchid'), { force: true });
+execFileSync('swiftc', [join(root, 'electron/native/keychain-touchid.swift'), '-o', join(stage, 'native-bin/keychain-touchid')], { stdio: 'inherit' });
 
 await writeFile(join(stage, 'package.json'), JSON.stringify({
   name: 'healthtrend',

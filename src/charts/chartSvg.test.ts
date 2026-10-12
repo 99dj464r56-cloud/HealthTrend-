@@ -100,6 +100,10 @@ describe('SVG trend chart', () => {
     expect(svg.querySelector('[data-reference="lower"]')?.getAttribute('data-reference-value')).toBe('2');
     expect(svg.querySelector('[data-reference="upper"]')?.getAttribute('data-reference-value')).toBe('9');
     expect(svg.querySelector('[data-report-range-label="true"]')?.textContent).toContain('2026-01-01');
+    expect(svg.textContent).toContain('最新报告对照线');
+    expect(svg.textContent).toContain('不代表历史范围');
+    expect(svg.querySelector('circle[data-date="2024-01-01"] title')?.textContent).toContain('当次范围 3–7');
+    expect(svg.querySelector('circle[data-date="2026-01-01"] title')?.textContent).toContain('Lab B');
     // Third point still classified from its own limits
     expect(svg.querySelector('[data-date="2026-01-01"]')?.getAttribute('data-category')).toBe('in-range');
   });

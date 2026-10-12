@@ -44,3 +44,7 @@ Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**�
 ## License
 
 仅供个人／课程作业使用；请勿把他人健康资料提交到公开仓库。
+
+### Release checks
+
+Run `npm run test:release:pages` before submitting a Pages release. The existing Pages workflow runs unit tests, then `build:pages` (typecheck and, in CI, Chromium installation plus browser E2E), then the recursive `audit:pages` before uploading the same `dist`. Unknown output files, symbolic links and altered synthetic demo seed block release. Audit inventory includes SHA-256 hashes in memory; it is a structural guard, not proof that arbitrary personal information cannot occur in permitted code. Current device acceptance: [verification](docs/healthtrend-release-verification-2026-10-13.md).

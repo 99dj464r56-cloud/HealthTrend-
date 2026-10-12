@@ -10,6 +10,9 @@ const root = resolve('.');
 const out = join(root, 'dist');
 const base = process.env.VITE_BASE_PATH ?? '/HealthTrend-/';
 
+const types = spawnSync('npx', ['tsc', '--noEmit'], { cwd: root, stdio: 'inherit' });
+if (types.status !== 0) process.exit(types.status ?? 1);
+
 rmSync(out, { recursive: true, force: true });
 
 const ocr = spawnSync('node', ['scripts/copy-ocr-assets.mjs'], { cwd: root, stdio: 'inherit' });
@@ -31,3 +34,13 @@ if (existsSync(readme)) rmSync(readme, { force: true });
 cpSync(join(out, 'index.html'), join(out, '404.html'));
 writeFileSync(join(out, '.nojekyll'), '');
 console.info(`Pages build ready at ${out} (base ${base})`);
+
+// The existing Pages workflow invokes this entry point before uploading dist.
+if (process.env.CI && process.env.CI !== 'false') {
+  const browsers = spawnSync('npx', ['playwright', 'install', '--with-deps', 'chromium'], { cwd: root, stdio: 'inherit' });
+  if (browsers.status !== 0) process.exit(browsers.status ?? 1);
+  const tests = spawnSync('npm', ['run', 'test:e2e'], {
+    cwd: root, stdio: 'inherit', env: { ...process.env, VITE_BASE_PATH: '/', VITE_SHARE_BUILD: '1' },
+  });
+  if (tests.status !== 0) process.exit(tests.status ?? 1);
+}
