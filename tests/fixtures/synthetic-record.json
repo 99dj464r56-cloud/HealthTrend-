@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 4,
+  "profile": {
+    "displayName": "Alex Demo",
+    "identityConfirmed": true
+  },
+  "medications": [
+    {
+      "id": "synthetic-medication",
+      "nameZh": "合成示例药",
+      "nameEn": "Synthetic medicine",
+      "linkedIndicatorIds": [
+        "synthetic-marker",
+        "wbc-synthetic"
+      ],
+      "monitoringNote": null
+    }
+  ],
+  "indicators": [
+    {
+      "id": "synthetic-marker",
+      "nameZh": "合成示例指标",
+      "nameEn": "Synthetic marker",
+      "purposeZh": "用于界面布局测试，不代表真实检查用途",
+      "purposeEn": "Synthetic test of report layout only",
+      "category": "Synthetic group",
+      "unit": "mmol/L",
+      "lowerLimit": 3,
+      "upperLimit": 7,
+      "priority": true
+    },
+    {
+      "id": "empty-marker",
+      "nameZh": "无数据示例指标",
+      "nameEn": "Empty synthetic marker",
+      "purposeZh": "验证空数据卡片",
+      "purposeEn": "Validates empty series layout",
+      "category": "Synthetic group",
+      "unit": "U/L",
+      "lowerLimit": null,
+      "upperLimit": 20,
+      "priority": false
+    },
+    {
+      "id": "wbc-synthetic",
+      "nameZh": "白细胞计数（合成血细胞分析示例）",
+      "nameEn": "White blood cell count (synthetic CBC layout probe with a deliberately long English label)",
+      "purposeZh": "合成 CBC 布局测试，非真实检验",
+      "purposeEn": "Synthetic CBC layout only",
+      "category": "血细胞分析 (CBC synthetic)",
+      "unit": "10^9/L",
+      "lowerLimit": 3.5,
+      "upperLimit": 9.5,
+      "priority": true
+    },
+    {
+      "id": "alt-synthetic",
+      "nameZh": "丙氨酸氨基转移酶（合成肝功能长名称示例指标）",
+      "nameEn": "Alanine aminotransferase (synthetic hepatic panel long-name layout)",
+      "purposeZh": "合成肝功能布局",
+      "purposeEn": "Synthetic hepatic layout",
+      "category": "肝功能 (synthetic)",
+      "unit": "U/L",
+      "lowerLimit": 0,
+      "upperLimit": 40,
+      "priority": false
+    }
+  ],
+  "observations": [
+    {
+      "id": "synthetic-2024",
+      "indicatorId": "synthetic-marker",
+      "date": "2024-06-30",
+      "rawValue": "5",
+      "value": 5,
+      "comparator": "none",
+      "unit": "mmol/L",
+      "lowerLimit": 3,
+      "upperLimit": 7,
+      "rangeProvenance": "from-report",
+      "laboratory": null,
+      "method": null,
+      "specimen": null,
+      "sourceId": null,
+      "pageNumber": null,
+      "confirmed": true
+    },
+    {
+      "id": "synthetic-2025",
+      "indicatorId": "synthetic-marker",
+      "date": "2025-07-01",
+      "rawValue": "2.8",
+      "value": 2.8,
+      "comparator": "none",
+      "unit": "mmol/L",
+      "lowerLimit": 3.5,
+      "upperLimit": 6.5,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab A",
+      "method": null,
+      "specimen": null,
+      "sourceId": "src-lab-a",
+      "pageNumber": 1,
+      "confirmed": true
+    },
+    {
+      "id": "synthetic-2026",
+      "indicatorId": "synthetic-marker",
+      "date": "2026-09-09",
+      "rawValue": "7.4",
+      "value": 7.4,
+      "comparator": "none",
+      "unit": "mmol/L",
+      "lowerLimit": 3.0,
+      "upperLimit": 7.0,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab B",
+      "method": null,
+      "specimen": null,
+      "sourceId": "src-lab-b",
+      "pageNumber": 1,
+      "confirmed": true
+    },
+    {
+      "id": "synthetic-2026-same-day-am",
+      "indicatorId": "synthetic-marker",
+      "date": "2026-09-09",
+      "rawValue": "6.9",
+      "value": 6.9,
+      "comparator": "none",
+      "unit": "mmol/L",
+      "lowerLimit": 3.0,
+      "upperLimit": 7.0,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab B",
+      "method": "method-morning",
+      "specimen": null,
+      "sourceId": "src-lab-b",
+      "pageNumber": 1,
+      "confirmed": true
+    },
+    {
+      "id": "wbc-2025",
+      "indicatorId": "wbc-synthetic",
+      "date": "2025-07-01",
+      "rawValue": "6.2",
+      "value": 6.2,
+      "comparator": "none",
+      "unit": "10^9/L",
+      "lowerLimit": 3.5,
+      "upperLimit": 9.5,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab A",
+      "method": null,
+      "specimen": null,
+      "sourceId": "src-lab-a",
+      "pageNumber": 2,
+      "confirmed": true
+    },
+    {
+      "id": "wbc-2026",
+      "indicatorId": "wbc-synthetic",
+      "date": "2026-09-09",
+      "rawValue": "11.0",
+      "value": 11.0,
+      "comparator": "none",
+      "unit": "10^9/L",
+      "lowerLimit": 4.0,
+      "upperLimit": 10.0,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab B",
+      "method": "auto-diff",
+      "specimen": null,
+      "sourceId": "src-lab-b",
+      "pageNumber": 2,
+      "confirmed": true
+    },
+    {
+      "id": "alt-2026",
+      "indicatorId": "alt-synthetic",
+      "date": "2026-09-09",
+      "rawValue": "<5",
+      "value": 5,
+      "comparator": "lt",
+      "unit": "U/L",
+      "lowerLimit": 0,
+      "upperLimit": 40,
+      "rangeProvenance": "from-report",
+      "laboratory": "Demo Lab B",
+      "method": null,
+      "specimen": null,
+      "sourceId": "src-lab-b",
+      "pageNumber": 2,
+      "confirmed": true
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-lab-a",
+      "fileName": "synthetic-lab-a-2025.pdf",
+      "type": "pdf",
+      "importedAt": "2025-07-01T10:00:00.000Z",
+      "pageCount": 3
+    },
+    {
+      "id": "src-lab-b",
+      "fileName": "synthetic-lab-b-2026.pdf",
+      "type": "pdf",
+      "importedAt": "2026-09-09T10:00:00.000Z",
+      "pageCount": 2
+    }
+  ],
+  "regimenStages": [
+    {
+      "id": "synthetic-medication-stage-1",
+      "medicationId": "synthetic-medication",
+      "strengthLabel": "10 mg",
+      "doseAmount": "1",
+      "doseUnit": "tablet",
+      "frequency": "Daily, synthetic test only",
+      "form": "tablet",
+      "packCountLabel": "30 tablets",
+      "startDate": "2025-01-01",
+      "endDate": null
+    }
+  ],
+  "reportTextBlocks": [
+    {
+      "id": "synthetic-text-1",
+      "sourceId": "src-lab-b",
+      "reportName": "Synthetic checkup 2026",
+      "reportDate": "2026-09-09",
+      "laboratory": "Demo Lab",
+      "pageNumber": 2,
+      "sectionTitle": "结论",
+      "sectionKind": "conclusion",
+      "body": "Synthetic conclusion text for layout testing only. Not medical advice.",
+      "kind": "verbatim",
+      "contentFingerprint": "synthetic|2026-09-09|demo lab|2|结论|Synthetic conclusion text for layout testing only. Not medical advice.",
+      "confirmed": true
+    }
+  ],
+  "appleHealthRecords": []
+}

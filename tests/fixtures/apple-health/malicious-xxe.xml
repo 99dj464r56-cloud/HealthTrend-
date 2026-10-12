@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HealthData [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<HealthData>
+  <Record type="HKQuantityTypeIdentifierStepCount" value="&xxe;" startDate="2026-01-01 00:00:00 +0800"/>
+</HealthData>

@@ -1,0 +1,15 @@
+{
+  "name": "HealthTrend",
+  "short_name": "HealthTrend",
+  "description": "本机健康趋势：化验／药盒整理与加密备份。资料不上传。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#1d4ed8",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
