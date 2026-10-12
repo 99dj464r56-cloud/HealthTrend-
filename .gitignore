@@ -25,3 +25,6 @@ tmp/
 
 build/icon-1024.png
 build/icon.icns
+
+dist-release/
+tmp/
