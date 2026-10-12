@@ -69,7 +69,7 @@ describe('health document ingestion', () => {
   it('does not misclassify a bare medicine strength as a lab result', () => {
     const source: SourcePage = {
       pageNumber: 1,
-      text: 'METOPROLOL-WGR 50 mg\nTake a half tablet daily',
+      text: 'DEMO-BETA-BLOCKER 50 mg\nTake a half tablet daily',
       confidence: 90,
     };
     expect(parseCandidates(source)).toEqual([]);
