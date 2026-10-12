@@ -1,6 +1,7 @@
 import { renderIndicatorChart } from '../charts/chartSvg';
 import type { ChartSeries } from '../charts/series';
 import type { ReportModel } from './reportModel';
+import { formatRegimenStageSummary } from '../import/medicationPackaging';
 import './print.css';
 
 function html<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
@@ -15,8 +16,10 @@ function cell(row: HTMLTableRowElement, value: string, heading = false): void {
   row.append(element);
 }
 
-function period(medicine: { startDate: string | null; endDate: string | null }): string {
-  return `${medicine.startDate ?? '开始日期未记录'} - ${medicine.endDate ?? '仍在使用 / 未记录结束日期'}`;
+function period(stage: { startDate: string | null; endDate: string | null }): string {
+  const start = stage.startDate ?? '开始日期未知';
+  const end = stage.endDate ?? '结束日期未知 / 仍在使用';
+  return `${start} - ${end}`;
 }
 
 function createMedicationSummary(model: ReportModel): HTMLElement {
@@ -33,21 +36,22 @@ function createMedicationSummary(model: ReportModel): HTMLElement {
   const wrapper = html('div', 'report-table-wrap');
   const table = html('table', 'report-table');
   const header = html('tr');
-  ['中文名称 / Chinese', 'English name', '规格 / Dose', '使用方法 / Instructions', '使用期间 / Period', '关联指标 / Linked indicators']
+  ['中文名称 / Chinese', 'English name', '用药阶段 / Regimen stages', '关联指标 / Linked indicators']
     .forEach((label) => cell(header, label, true));
   const thead = html('thead');
   thead.append(header);
   table.append(thead);
   const tbody = html('tbody');
-  for (const medication of model.medications) {
+  for (const rowModel of model.medications) {
     const row = html('tr');
-    cell(row, medication.nameZh);
-    cell(row, medication.nameEn);
-    cell(row, medication.strength);
-    cell(row, medication.instructions);
-    cell(row, period(medication));
+    cell(row, rowModel.medication.nameZh);
+    cell(row, rowModel.medication.nameEn);
+    const stageText = rowModel.stages.length
+      ? rowModel.stages.map((stage) => `${formatRegimenStageSummary(stage)} · ${period(stage)}`).join('； ')
+      : '尚无用药阶段';
+    cell(row, stageText);
     const linked = model.categories.flatMap((group) => group.series
-      .filter((series) => series.medications.some((item) => item.id === medication.id))
+      .filter((series) => series.medications.some((item) => item.medicationId === rowModel.medication.id))
       .map((series) => `${series.nameZh} / ${series.nameEn}`));
     cell(row, [...new Set(linked)].join('；') || '未关联 / Not linked');
     tbody.append(row);
@@ -55,6 +59,99 @@ function createMedicationSummary(model: ReportModel): HTMLElement {
   table.append(tbody);
   wrapper.append(table);
   section.append(wrapper);
+  const note = html('p', 'report-note');
+  note.textContent = '用药阶段为中性时间记录，不表示药物导致指标变化，也不提供剂量调整建议。';
+  section.append(note);
+  return section;
+}
+
+function createReportTextSection(model: ReportModel): HTMLElement {
+  const section = html('section', 'report-text-section');
+  section.dataset.reportText = 'true';
+  const title = html('h2');
+  title.textContent = '报告文字结论与建议 / Report text (confirmed verbatim)';
+  section.append(title);
+  if (!model.reportTextSections.length) {
+    const empty = html('p', 'report-note');
+    empty.textContent = '暂无已确认的报告文字。未核对的 OCR 文本不会出现在此。';
+    section.append(empty);
+    return section;
+  }
+  for (const group of model.reportTextSections) {
+    const block = html('article', 'report-text-block');
+    const heading = html('h3');
+    heading.textContent = group.title;
+    block.append(heading);
+    for (const item of group.blocks) {
+      const meta = html('p', 'report-text-meta');
+      meta.textContent = [
+        item.reportName,
+        item.reportDate ?? '报告日期未知',
+        item.laboratory ?? '机构未记录',
+        item.pageNumber ? `第 ${item.pageNumber} 页` : '页码未记录',
+        item.kind === 'user-note' ? '用户备注' : '原文',
+      ].join(' · ');
+      const body = html('pre', 'report-text-body');
+      body.textContent = item.body;
+      block.append(meta, body);
+    }
+    if (group.truncated) {
+      const notice = html('p', 'report-note');
+      notice.dataset.truncatedNotice = 'true';
+      notice.textContent = '部分段落较长，已分页提示截断；完整原文仍保存在本机记录中，未经 AI 改写。';
+      block.append(notice);
+    }
+    section.append(block);
+  }
+  return section;
+}
+
+
+function createAppleHealthSection(model: ReportModel): HTMLElement {
+  const section = html('section', 'report-apple-health');
+  section.dataset.appleHealth = 'true';
+  const title = html('h2');
+  title.textContent = 'Apple 健康 / 活动记录（与化验指标分开）';
+  section.append(title);
+  if (!model.appleHealthGroups.length) {
+    const empty = html('p', 'report-note');
+    empty.textContent = '暂无已确认的 Apple 健康导入数据。';
+    section.append(empty);
+    return section;
+  }
+  const note = html('p', 'report-note');
+  note.textContent = '活动、训练与摘要按类别列出；不与化验指标混用坐标轴。未做静默求和/平均。';
+  section.append(note);
+  for (const group of model.appleHealthGroups) {
+    const heading = html('h3');
+    heading.textContent = group.category;
+    section.append(heading);
+    const table = html('table', 'report-table');
+    const header = html('tr');
+    ['日期', '类型', '数值', '来源', '备注'].forEach((label) => cell(header, label, true));
+    const thead = html('thead');
+    thead.append(header);
+    table.append(thead);
+    const tbody = html('tbody');
+    for (const row of group.rows.slice(0, 80)) {
+      const tr = html('tr');
+      cell(tr, row.localDate);
+      cell(tr, row.workoutActivityType ?? row.typeIdentifier);
+      cell(tr, row.value === null ? '—' : `${row.value}${row.unit ? ` ${row.unit}` : ''}`);
+      cell(tr, row.sourceName ?? '—');
+      cell(tr, row.kind === 'workout' ? `训练 ${row.duration ?? ''} ${row.durationUnit ?? ''}`.trim() : row.kind);
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    const wrap = html('div', 'report-table-wrap');
+    wrap.append(table);
+    section.append(wrap);
+    if (group.rows.length > 80) {
+      const more = html('p', 'report-note');
+      more.textContent = `另有 ${group.rows.length - 80} 条未在表中展开（已保存在本机记录）。`;
+      section.append(more);
+    }
+  }
   return section;
 }
 
@@ -74,7 +171,7 @@ function chartCard(series: ChartSeries, priority: boolean): HTMLElement {
 
   const medicines = html('div', 'chart-medications');
   const medTitle = html('strong');
-  medTitle.textContent = '关联用药 / Linked medicine';
+  medTitle.textContent = '关联用药阶段 / Linked regimen stages (neutral)';
   medicines.append(medTitle);
   if (!series.medications.length) {
     const noMedicine = html('span');
@@ -83,7 +180,7 @@ function chartCard(series: ChartSeries, priority: boolean): HTMLElement {
   } else {
     for (const medication of series.medications) {
       const item = html('p');
-      item.textContent = `${medication.nameZh} / ${medication.nameEn} · ${medication.strength} · ${medication.instructions} · ${period(medication)}`;
+      item.textContent = `${medication.nameZh} / ${medication.nameEn} · ${medication.summary} · ${period(medication)}`;
       medicines.append(item);
     }
   }
@@ -117,6 +214,107 @@ export interface PrintViewActions {
   onBack(): void;
 }
 
+
+function createProvenanceAppendix(model: ReportModel): HTMLElement {
+  const section = html('section', 'report-provenance');
+  section.dataset.provenanceAppendix = 'true';
+  const title = html('h2');
+  title.textContent = '附录：资料来源与可追溯信息 / Provenance appendix';
+  section.append(title);
+
+  const meta = html('p', 'report-note');
+  const p = model.provenance;
+  meta.textContent = [
+    `模板 / Template: ${p.templateId}@${p.templateVersion}`,
+    `数据 schema / Schema: v${p.schemaVersion}`,
+    `生成日期 / Generated: ${p.generatedAt}`,
+    `原始文件留存 / Original files retained: ${p.originalFilesRetained ? '是' : '否（默认不留存）'}`,
+  ].join(' · ');
+  section.append(meta);
+
+  const notesTitle = html('h3');
+  notesTitle.textContent = '修订与确认说明 / Revision notes';
+  section.append(notesTitle);
+  const notes = html('ul', 'provenance-notes');
+  for (const note of p.revisionNotes) {
+    const li = html('li');
+    li.textContent = note;
+    notes.append(li);
+  }
+  section.append(notes);
+
+  const sourcesTitle = html('h3');
+  sourcesTitle.textContent = '来源文件 / Source files';
+  section.append(sourcesTitle);
+  if (!p.sources.length) {
+    const empty = html('p', 'report-note');
+    empty.textContent = '无已登记来源文件（手动录入或来源未关联）。';
+    section.append(empty);
+  } else {
+    const table = html('table', 'report-table');
+    const head = html('tr');
+    ['文件名', '类型', '导入时间', '页数'].forEach((label) => cell(head, label, true));
+    const thead = html('thead');
+    thead.append(head);
+    table.append(thead);
+    const tbody = html('tbody');
+    for (const source of p.sources) {
+      const tr = html('tr');
+      cell(tr, source.fileName);
+      cell(tr, source.type);
+      cell(tr, source.importedAt);
+      cell(tr, source.pageCount === null ? '—' : String(source.pageCount));
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    const wrap = html('div', 'report-table-wrap');
+    wrap.append(table);
+    section.append(wrap);
+  }
+
+  const obsTitle = html('h3');
+  obsTitle.textContent = '观察值来源与确认状态 / Observation provenance';
+  section.append(obsTitle);
+  if (!p.observations.length) {
+    const empty = html('p', 'report-note');
+    empty.textContent = '暂无已确认观察值。';
+    section.append(empty);
+  } else {
+    const table = html('table', 'report-table');
+    const head = html('tr');
+    ['指标', '日期', '来源文件', '页码', '确认', '范围来源', '实验室'].forEach((label) => cell(head, label, true));
+    const thead = html('thead');
+    thead.append(head);
+    table.append(thead);
+    const tbody = html('tbody');
+    for (const row of p.observations.slice(0, 120)) {
+      const tr = html('tr');
+      cell(tr, row.indicatorNameZh);
+      cell(tr, row.date);
+      cell(tr, row.sourceFileName ?? '—');
+      cell(tr, row.pageNumber === null ? '—' : String(row.pageNumber));
+      cell(tr, row.confirmed ? '已确认' : '未确认');
+      cell(tr, row.rangeProvenance);
+      cell(tr, row.laboratory ?? '—');
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    const wrap = html('div', 'report-table-wrap');
+    wrap.append(table);
+    section.append(wrap);
+    if (p.observations.length > 120) {
+      const more = html('p', 'report-note');
+      more.textContent = `另有 ${p.observations.length - 120} 条观察值未在表中展开（已保存在本机记录）。`;
+      section.append(more);
+    }
+  }
+
+  const counts = html('p', 'report-note');
+  counts.textContent = `已确认报告文字 ${p.reportTextCount} 段 · Apple 健康记录 ${p.appleHealthCount} 条。`;
+  section.append(counts);
+  return section;
+}
+
 export function createPrintView(model: ReportModel, actions: PrintViewActions): HTMLElement {
   const root = html('main', 'print-report');
   root.dataset.reportRoot = 'true';
@@ -134,20 +332,30 @@ export function createPrintView(model: ReportModel, actions: PrintViewActions): 
   const header = html('header', 'report-header');
   const title = html('h1');
   title.textContent = model.title;
+  const subject = html('p', 'report-subject');
+  subject.dataset.profileSubject = 'true';
+  subject.textContent = model.profileDisplayName
+    ? `档案所属 / Record for: ${model.profileDisplayName}`
+    : '档案所属 / Record for: （未设置显示名）';
   const date = html('p', 'report-created');
   date.textContent = `生成日期 / Generated: ${model.createdDate}`;
   const disclaimer = html('p', 'report-disclaimer');
   disclaimer.textContent = '本报告仅整理已录入资料，不提供诊断或治疗建议；药物与指标的并列仅供记录对照，不代表因果关系。参考范围以对应检查报告为准。';
-  header.append(title, date, disclaimer);
-  root.append(toolbar, header, createMedicationSummary(model));
+  header.append(title, subject, date, disclaimer);
+  root.append(toolbar, header, createMedicationSummary(model), createReportTextSection(model), createAppleHealthSection(model));
 
-  root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线标出录入的报告参考上下限，红色箭头仅表示数值超出已录入范围。', model.priorityIndicators, true));
+  root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线标出录入的报告参考上下限，红色箭头仅表示数值超出已录入范围。用药色条为中性时间标记。', model.priorityIndicators, true));
   for (const category of model.categories) {
     root.append(chartSection(`相关指标分类 / Category: ${category.category}`, '本分类中的每个指标均使用独立趋势图；不同单位的数值分开显示。', category.series, false));
   }
 
+  root.append(createProvenanceAppendix(model));
+
   const footer = html('footer', 'report-footer');
-  footer.textContent = '趋势仅代表已录入数据；空白参考限表示原始资料未提供或未录入。请以医生和原始报告为准。';
+  footer.textContent = [
+    `趋势仅代表已录入数据；空白参考限表示原始资料未提供或未录入。请以医生和原始报告为准。`,
+    `模板 ${model.provenance.templateId}@${model.provenance.templateVersion} · schema v${model.provenance.schemaVersion}`,
+  ].join(' ');
   root.append(footer);
   return root;
 }

@@ -5,6 +5,10 @@ test('local OCR produces editable drafts, and only confirmed values enter the re
   page.on('request', (request) => requests.push({ url: request.url(), method: request.method(), body: request.postData() }));
   await page.goto('./');
   await page.getByRole('button', { name: '开始整理' }).click();
+  await page.getByLabel('档案显示名').fill('Alex Demo');
+  await page.getByLabel('我确认以上显示名对应该档案所属人').check();
+  await page.getByRole('button', { name: '保存档案身份' }).click();
+  await expect(page.getByLabel('档案显示名')).toHaveValue('Alex Demo');
 
   const imageBytes = await page.evaluate(async () => {
     const canvas = document.createElement('canvas');
@@ -34,7 +38,7 @@ test('local OCR produces editable drafts, and only confirmed values enter the re
   await input('分类').fill('肾功能');
   await input('中文用途').fill('了解肾脏过滤功能');
   await input('English purpose').fill('Assesses kidney filtration');
-  await candidate.getByRole('button', { name: '核对并加入记录' }).click();
+  await candidate.getByLabel('English purpose').press('Enter');
   await expect(page.getByRole('heading', { name: '肌酐 / Creatinine' })).toBeVisible();
   await expect(page.locator('.records-table').getByText('88.4 umol/L')).toBeVisible();
 

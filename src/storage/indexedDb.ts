@@ -1,4 +1,5 @@
-import { validateHealthRecord } from '../domain/validation';
+import { migrateHealthRecord, needsSchemaRewrite } from '../domain/migrate';
+import { validateHealthRecord, HealthRecordValidationError } from '../domain/validation';
 import type { HealthRecord } from '../domain/types';
 
 const DATABASE_NAME = 'health-trend-pdf';
@@ -41,16 +42,50 @@ async function runTransaction<T>(mode: IDBTransactionMode, operation: (store: ID
   });
 }
 
+async function getRawRecord(): Promise<unknown> {
+  return runTransaction('readonly', (store) => store.get(CURRENT_RECORD_KEY));
+}
+
 export async function saveHealthRecord(record: HealthRecord): Promise<void> {
   const confirmedRecord = validateHealthRecord(record);
   await runTransaction('readwrite', (store) => store.put(confirmedRecord, CURRENT_RECORD_KEY));
 }
 
+/**
+ * Load the local record, migrating legacy schemas → v3 in memory.
+ * On migrate/validate failure the raw IndexedDB bytes are left untouched (no destructive rewrite).
+ * After a successful v1 migrate, attempts to persist v3; persist failure still returns the migrated record.
+ */
 export async function loadHealthRecord(): Promise<HealthRecord | null> {
-  const result = await runTransaction('readonly', (store) => store.get(CURRENT_RECORD_KEY));
-  return result === undefined ? null : validateHealthRecord(result);
+  const raw = await getRawRecord();
+  if (raw === undefined) return null;
+
+  let migrated: HealthRecord;
+  try {
+    migrated = validateHealthRecord(migrateHealthRecord(raw));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Local health record could not be migrated.';
+    throw new HealthRecordValidationError(
+      `${message} The original local record was left unchanged.`,
+    );
+  }
+
+  if (needsSchemaRewrite(raw)) {
+    try {
+      await runTransaction('readwrite', (store) => store.put(migrated, CURRENT_RECORD_KEY));
+    } catch {
+      // Leave legacy bytes in place; caller still receives a valid in-memory v3 record.
+    }
+  }
+
+  return migrated;
 }
 
 export async function clearHealthRecord(): Promise<void> {
   await runTransaction('readwrite', (store) => store.clear());
+}
+
+/** Test/helper: write an arbitrary payload without validation (simulates legacy disk state). */
+export async function putRawHealthRecordForTests(raw: unknown): Promise<void> {
+  await runTransaction('readwrite', (store) => store.put(raw, CURRENT_RECORD_KEY));
 }

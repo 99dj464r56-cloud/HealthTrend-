@@ -1,4 +1,5 @@
 import type { HealthRecord, Indicator, Observation } from '../domain/types';
+import { formatRegimenStageSummary } from '../import/medicationPackaging';
 
 function createAction(label: string, action: string, id: string): HTMLButtonElement {
   const button = document.createElement('button');
@@ -51,19 +52,76 @@ function medicationTable(record: HealthRecord): HTMLElement {
     section.append(createEmptyMessage('目前没有药物'));
     return section;
   }
-  const { table, body } = createTable(['药物 / Medication', '规格 / Strength', '使用方法 / Instructions', '关联指标 / Linked indicators', '操作 / Actions']);
+  const { table, body } = createTable(['药物 / Medication', '用药阶段 / Stages', '关联指标 / Linked indicators', '操作 / Actions']);
   for (const medication of record.medications) {
     const row = body.insertRow();
     row.append(createCell(`${medication.nameZh} / ${medication.nameEn}`));
-    row.append(createCell(medication.strength));
-    row.append(createCell(medication.instructions));
+    const stages = record.regimenStages.filter((stage) => stage.medicationId === medication.id);
+    const stageText = stages.length
+      ? stages.map((stage) => {
+        const start = stage.startDate ?? '开始未知';
+        const end = stage.endDate ?? '结束未知';
+        return `${formatRegimenStageSummary(stage)} (${start}–${end})`;
+      }).join('； ')
+      : '尚无阶段';
+    row.append(createCell(stageText));
     const links = medication.linkedIndicatorIds.map((id) => record.indicators.find((indicator) => indicator.id === id)).filter((item): item is Indicator => Boolean(item));
     row.append(createCell(links.map((indicator) => `${indicator.nameZh} / ${indicator.nameEn}`).join('、') || '—'));
     const actions = document.createElement('td');
     actions.className = 'actions-cell';
     actions.append(
       createAction(`编辑药物 ${medication.nameZh}`, 'edit-medication', medication.id),
+      createAction(`添加阶段 ${medication.nameZh}`, 'add-regimen-stage', medication.id),
       createAction(`删除药物 ${medication.nameZh}`, 'delete-medication', medication.id),
+    );
+    row.append(actions);
+  }
+  section.append(table);
+
+  if (record.regimenStages.length) {
+    const stageHeading = document.createElement('h4');
+    stageHeading.textContent = '全部用药阶段 / All regimen stages';
+    section.append(stageHeading);
+    const stageTable = createTable(['药物', '摘要', '期间', '操作']);
+    for (const stage of record.regimenStages) {
+      const medication = record.medications.find((item) => item.id === stage.medicationId);
+      const row = stageTable.body.insertRow();
+      row.append(createCell(medication ? `${medication.nameZh} / ${medication.nameEn}` : stage.medicationId));
+      row.append(createCell(formatRegimenStageSummary(stage)));
+      row.append(createCell(`${stage.startDate ?? '开始未知'} – ${stage.endDate ?? '结束未知'}`));
+      const actions = document.createElement('td');
+      actions.className = 'actions-cell';
+      actions.append(
+        createAction(`编辑阶段 ${stage.id}`, 'edit-regimen-stage', stage.id),
+        createAction(`删除阶段 ${stage.id}`, 'delete-regimen-stage', stage.id),
+      );
+      row.append(actions);
+    }
+    section.append(stageTable.table);
+  }
+  return section;
+}
+
+function reportTextSection(record: HealthRecord): HTMLElement {
+  const section = document.createElement('section');
+  section.className = 'review-section';
+  section.append(sectionTitle('报告文字 / Report text'));
+  if (!record.reportTextBlocks.length) {
+    section.append(createEmptyMessage('目前没有已确认的报告文字'));
+    return section;
+  }
+  const { table, body } = createTable(['报告', '段落', '性质', '摘要', '操作']);
+  for (const block of record.reportTextBlocks) {
+    const row = body.insertRow();
+    row.append(createCell(`${block.reportName}${block.reportDate ? ` · ${block.reportDate}` : ''}`));
+    row.append(createCell(block.sectionTitle));
+    row.append(createCell(block.kind === 'user-note' ? '用户备注' : '原文'));
+    row.append(createCell(block.body.slice(0, 80)));
+    const actions = document.createElement('td');
+    actions.className = 'actions-cell';
+    actions.append(
+      createAction(`编辑文字 ${block.id}`, 'edit-report-text', block.id),
+      createAction(`删除文字 ${block.id}`, 'delete-report-text', block.id),
     );
     row.append(actions);
   }
@@ -71,9 +129,19 @@ function medicationTable(record: HealthRecord): HTMLElement {
   return section;
 }
 
+function formatObservationResult(observation: Observation): string {
+  const rangeBits: string[] = [];
+  if (observation.lowerLimit !== null) rangeBits.push(`下限 ${observation.lowerLimit}`);
+  if (observation.upperLimit !== null) rangeBits.push(`上限 ${observation.upperLimit}`);
+  const rangeText = rangeBits.length
+    ? ` · ${rangeBits.join(' / ')} (${observation.rangeProvenance})`
+    : ` · 范围未提供 (${observation.rangeProvenance})`;
+  return `${observation.rawValue} ${observation.unit}${rangeText}`;
+}
+
 function observationRow(observation: Observation): HTMLTableRowElement {
   const row = document.createElement('tr');
-  row.append(createCell(observation.date), createCell(`${observation.value} ${observation.unit}`));
+  row.append(createCell(observation.date), createCell(formatObservationResult(observation)));
   const actions = document.createElement('td');
   actions.className = 'actions-cell';
   actions.append(
@@ -96,7 +164,7 @@ function indicatorCard(indicator: Indicator, record: HealthRecord): HTMLElement 
   metadata.className = 'indicator-metadata';
   const lower = indicator.lowerLimit === null ? '未提供' : String(indicator.lowerLimit);
   const upper = indicator.upperLimit === null ? '未提供' : String(indicator.upperLimit);
-  metadata.textContent = `${indicator.category} · 单位 ${indicator.unit} · 下限 ${lower} · 上限 ${upper}${indicator.priority ? ' · 重点关注' : ''}`;
+  metadata.textContent = `${indicator.category} · 单位 ${indicator.unit} · 新建默认下限 ${lower} · 新建默认上限 ${upper}${indicator.priority ? ' · 重点关注' : ''}（历史异常判定以各次结果自身范围为准）`;
   const actions = document.createElement('div');
   actions.className = 'record-actions';
   actions.append(
@@ -127,6 +195,7 @@ export function createReviewTable(record: HealthRecord): HTMLElement {
   const root = document.createElement('div');
   root.className = 'review-lists';
   root.append(medicationTable(record));
+  root.append(reportTextSection(record));
   const indicatorSection = document.createElement('section');
   indicatorSection.className = 'review-section';
   indicatorSection.append(sectionTitle('检查指标 / Lab indicators'));

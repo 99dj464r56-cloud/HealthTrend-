@@ -65,3 +65,12 @@
   .chart-purpose { min-height: 0; }
   .report-footer { margin-top: 7mm; }
 }
+
+.report-text-section { break-inside: avoid; margin: 12pt 0; }
+.report-text-block { border: 1px solid #d5dde5; border-radius: 8px; padding: 8pt 10pt; margin: 8pt 0; background: #fff; }
+.report-text-meta { font-size: 9pt; color: #5b6b7a; margin: 0 0 4pt; }
+.report-text-body { white-space: pre-wrap; font-family: inherit; font-size: 10pt; margin: 0; }
+
+.report-provenance { margin: 12pt 0; break-before: page; page-break-before: always; }
+.report-provenance .provenance-notes { font-size: 9pt; color: #3d4b5a; }
+.report-provenance h3 { font-size: 11pt; margin: 10pt 0 4pt; }

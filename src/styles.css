@@ -137,3 +137,30 @@ h1, h2, p { margin-top: 0; }
   .observation-editor { grid-template-columns: 1fr; }
   .observation-editor h4, .observation-editor .form-actions { grid-column: 1; }
 }
+
+
+/* Apple Health manual import */
+.apple-health-panel .apple-health-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0.75rem 0;
+}
+.apple-health-preview {
+  white-space: pre-wrap;
+  background: var(--surface-muted, #f4f6f8);
+  border: 1px solid var(--border, #d0d7de);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.apple-health-sample-rows {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+.report-apple-health .report-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}

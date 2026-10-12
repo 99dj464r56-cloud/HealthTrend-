@@ -3,14 +3,19 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as storage from './indexedDb';
 import type { HealthRecord } from '../domain/types';
+import { emptyHealthRecord } from '../domain/types';
 
 const record: HealthRecord = {
-  schemaVersion: 1, medications: [], indicators: [{
+  ...emptyHealthRecord(),
+  indicators: [{
     id: 'x', nameZh: '样本指标', nameEn: 'Sample indicator', purposeZh: '样本用途', purposeEn: 'Sample purpose',
     category: '样本', unit: 'U/L', lowerLimit: null, upperLimit: null, priority: false,
   }],
-  observations: [{ id: 'obs-a', indicatorId: 'x', date: '2025-01-01', value: 2, unit: 'U/L', sourceId: null, confirmed: true }],
-  sources: [],
+  observations: [{
+    id: 'obs-a', indicatorId: 'x', date: '2025-01-01', rawValue: '2', value: 2, comparator: 'none',
+    unit: 'U/L', lowerLimit: null, upperLimit: null, rangeProvenance: 'unknown',
+    laboratory: null, method: null, specimen: null, sourceId: null, pageNumber: null, confirmed: true,
+  }],
 };
 
 function method(name: string): (...args: unknown[]) => Promise<unknown> {

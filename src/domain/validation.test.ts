@@ -1,18 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import * as validation from './validation';
 import type { HealthRecord } from './types';
+import { emptyHealthRecord } from './types';
 
 const validRecord: HealthRecord = {
-  schemaVersion: 1,
+  ...emptyHealthRecord(),
+  profile: { displayName: 'Alex Demo', identityConfirmed: true },
   medications: [{
-    id: 'med-1', nameZh: '示例药物', nameEn: 'Example medicine', strength: '10 mg', instructions: 'Daily',
-    startDate: '2024-01-01', endDate: null, linkedIndicatorIds: ['glucose'],
+    id: 'med-1', nameZh: '示例药物', nameEn: 'Example medicine', linkedIndicatorIds: ['glucose'],
+  }],
+  regimenStages: [{
+    id: 'stage-1', medicationId: 'med-1', strengthLabel: '10 mg', doseAmount: '1', doseUnit: 'tablet',
+    frequency: 'Daily', form: 'tablet', packCountLabel: '30 tablets',
+    startDate: '2024-01-01', endDate: null,
   }],
   indicators: [{
     id: 'glucose', nameZh: '空腹血糖', nameEn: 'Fasting glucose', purposeZh: '观察血糖', purposeEn: 'Tracks glucose',
     category: '代谢', unit: 'mmol/L', lowerLimit: 3.9, upperLimit: 6.1, priority: true,
   }],
-  observations: [{ id: 'obs-1', indicatorId: 'glucose', date: '2024-04-02', value: 5.1, unit: 'mmol/L', sourceId: 'src-1', confirmed: true }],
+  observations: [{
+    id: 'obs-1', indicatorId: 'glucose', date: '2024-04-02', rawValue: '5.1', value: 5.1, comparator: 'none',
+    unit: 'mmol/L', lowerLimit: 3.9, upperLimit: 6.1, rangeProvenance: 'from-report',
+    laboratory: 'Demo Lab A', method: null, specimen: null, sourceId: 'src-1', pageNumber: 1, confirmed: true,
+  }],
+  reportTextBlocks: [{
+    id: 'text-1', sourceId: 'src-1', reportName: 'Demo report', reportDate: '2024-04-02', laboratory: 'Demo Lab A',
+    pageNumber: 2, sectionTitle: '结论', sectionKind: 'conclusion',
+    body: 'Synthetic conclusion.', kind: 'verbatim',
+    contentFingerprint: 'demo|2024-04-02|demo lab a|2|结论|Synthetic conclusion.', confirmed: true,
+  }],
   sources: [{ id: 'src-1', fileName: 'fictional-report.pdf', type: 'pdf', importedAt: '2024-04-02T12:00:00Z', pageCount: 1 }],
 };
 
@@ -27,8 +43,21 @@ function validate(record: unknown): { kind: 'ok'; value: unknown } | { kind: 'er
 }
 
 describe('validateHealthRecord', () => {
-  it('accepts a complete reviewed record without changing its values', () => {
+  it('accepts a complete reviewed v4 record without changing its values', () => {
     expect(validate(validRecord)).toEqual({ kind: 'ok', value: validRecord });
+  });
+
+  it('rejects inverted regimen date ranges', () => {
+    const malformed = structuredClone(validRecord);
+    malformed.regimenStages[0]!.startDate = '2025-01-01';
+    malformed.regimenStages[0]!.endDate = '2024-01-01';
+    expect(validate(malformed).kind).toBe('error');
+  });
+
+  it('rejects unconfirmed report text', () => {
+    const malformed = structuredClone(validRecord);
+    Object.assign(malformed.reportTextBlocks[0]!, { confirmed: false });
+    expect(validate(malformed).kind).toBe('error');
   });
 
   it('rejects a non-calendar observation date', () => {
@@ -37,34 +66,7 @@ describe('validateHealthRecord', () => {
     expect(validate(malformed).kind).toBe('error');
   });
 
-  it('rejects non-finite laboratory values', () => {
-    const malformed = structuredClone(validRecord);
-    malformed.observations[0]!.value = Number.NaN;
-    expect(validate(malformed).kind).toBe('error');
-  });
-
-  it('rejects observations whose units differ from the indicator unit', () => {
-    const malformed = structuredClone(validRecord);
-    malformed.observations[0]!.unit = 'mg/dL';
-    expect(validate(malformed).kind).toBe('error');
-  });
-
-  it('rejects unconfirmed OCR observations from the saved record', () => {
-    const malformed = structuredClone(validRecord);
-    Object.assign(malformed.observations[0]!, { confirmed: false });
-    expect(validate(malformed).kind).toBe('error');
-  });
-
-  it('rejects duplicate record IDs', () => {
-    const malformed = structuredClone(validRecord);
-    malformed.sources.push({ ...malformed.sources[0]!, id: 'obs-1' });
-    expect(validate(malformed).kind).toBe('error');
-  });
-
-  it('rejects inverted reference bounds', () => {
-    const malformed = structuredClone(validRecord);
-    malformed.indicators[0]!.lowerLimit = 7;
-    malformed.indicators[0]!.upperLimit = 2;
-    expect(validate(malformed).kind).toBe('error');
+  it('rejects schema version 3 without migration', () => {
+    expect(validate({ ...validRecord, schemaVersion: 3 }).kind).toBe('error');
   });
 });

@@ -14,12 +14,32 @@ describe('manual entry helpers', () => {
     expect(typeof parse === 'function' ? parse('   ') : undefined).toBeNull();
   });
 
-  it('creates only explicitly confirmed observations with the indicator unit', () => {
+  it('creates confirmed observations with per-observation ranges and raw values', () => {
     const create = Reflect.get(manual, 'createManualObservation');
     expect(typeof create).toBe('function');
-    const result = typeof create === 'function' ? create(indicator, { id: 'reading-1', date: '2025-03-11', value: '88.4' }) : undefined;
-    expect(result).toEqual({
-      id: 'reading-1', indicatorId: 'creatinine', date: '2025-03-11', value: 88.4, unit: 'μmol/L', sourceId: null, confirmed: true,
+    const result = typeof create === 'function'
+      ? create(indicator, { id: 'reading-1', date: '2025-03-11', value: '88.4' })
+      : undefined;
+    expect(result).toMatchObject({
+      id: 'reading-1', indicatorId: 'creatinine', date: '2025-03-11',
+      rawValue: '88.4', value: 88.4, comparator: 'none', unit: 'μmol/L',
+      lowerLimit: null, upperLimit: 100, rangeProvenance: 'from-report',
+      sourceId: null, confirmed: true,
+    });
+  });
+
+  it('parses inequality comparators without coercing them to exact equality', () => {
+    const parse = Reflect.get(manual, 'parseObservationValue');
+    expect(typeof parse === 'function' ? parse('<0.01') : undefined).toEqual({
+      rawValue: '<0.01', value: 0.01, comparator: 'lt',
+    });
+    const create = Reflect.get(manual, 'createManualObservation');
+    const result = typeof create === 'function'
+      ? create(indicator, { id: 'low', date: '2025-03-11', value: '<0.01', lowerLimit: '', upperLimit: '' })
+      : undefined;
+    expect(result).toMatchObject({
+      rawValue: '<0.01', value: 0.01, comparator: 'lt',
+      lowerLimit: null, upperLimit: null, rangeProvenance: 'unknown',
     });
   });
 });

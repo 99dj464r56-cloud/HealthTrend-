@@ -2,6 +2,7 @@ import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { OcrProgress, OcrSession } from './imageOcr';
 import { createOcrSession } from './imageOcr';
+import { formatPdfTextItems } from './pdfTextLayout';
 import type { SourcePage } from './parseCandidates';
 import { MAX_PDF_PAGES, validateImportFile } from './limits';
 
@@ -34,7 +35,9 @@ export async function extractPdfText(
       checkCancelled(signal);
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
-      const text = content.items.map((item) => ('str' in item ? item.str : '')).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const text = formatPdfTextItems(content.items.flatMap((item) =>
+        'str' in item ? [{ str: item.str, hasEOL: item.hasEOL }] : [],
+      ));
       if (text.length >= 25) {
         pages.push({ pageNumber, text, confidence: null });
       } else {
