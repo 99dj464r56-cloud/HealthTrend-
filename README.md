@@ -30,9 +30,10 @@ Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**�
 ## 仓库与作业页
 
 - 作业远程：`https://github.com/99dj464r56-cloud/HealthTrend-`
-- Pages（启用 Actions 后）：`https://99dj464r56-cloud.github.io/HealthTrend-/`
+- **公开演示（无需登录）**：[`https://99dj464r56-cloud.github.io/HealthTrend-/`](https://99dj464r56-cloud.github.io/HealthTrend-/) — 打开即选「访客」或「示范报告」
 - 设计／计划：`docs/superpowers/`
 - 隐私约定：`PRIVACY.md`
+- Mac 桌面版：本机 `/Applications/HealthTrend.app`；公开下载需另发 GitHub Release（当前仓库无 Release 附件）
 
 ## 安全注意
 
