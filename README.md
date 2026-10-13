@@ -33,13 +33,17 @@ Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**�
 - **公开演示（无需登录）**：[`https://99dj464r56-cloud.github.io/HealthTrend-/`](https://99dj464r56-cloud.github.io/HealthTrend-/) — 打开即选「访客」或「示范报告」
 - 设计／计划：`docs/superpowers/`
 - 隐私约定：`PRIVACY.md`
-- Mac 桌面版：[Releases](https://github.com/99dj464r56-cloud/HealthTrend-/releases) 下载 `HealthTrend-mac.zip`（ad-hoc 签名；若 Gatekeeper 拦截，右键 → 打开）
+- Mac 桌面版 / Mac app：[下载 Download `HealthTrend-mac.zip`](https://github.com/99dj464r56-cloud/HealthTrend-/releases/latest/download/HealthTrend-mac.zip)（[Releases](https://github.com/99dj464r56-cloud/HealthTrend-/releases)；未签名公证，首次请右键 → 打开 / unsigned: right-click → Open）
 
 ## 安全注意
 
 - 公开构建与分享包**不得**包含 `public/seeds/personal-backup.json` 或任何真实病历。
 - 演示数据仅为合成样本；截图不含真实姓名／药名／生日。
 - 不要把恢复口令写进仓库或截图。
+
+## 作者 / Author
+
+vimi
 
 ## License
 

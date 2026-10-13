@@ -41,6 +41,7 @@ await writeFile(join(stage, 'package.json'), JSON.stringify({
   version: pkg.version,
   main: 'electron/main.cjs',
   private: true,
+  author: "vimi",
 }, null, 2));
 
 if (!(await stat(join(root, 'build/icon.icns')).catch(() => null))) execFileSync('node', ['scripts/build-mac-icon.mjs'], { cwd: root, stdio: 'inherit' });
@@ -58,6 +59,7 @@ const [appDir] = await packager({
   appBundleId: 'local.healthtrend.app',
   appCategoryType: 'public.app-category.medical',
   appVersion: pkg.version,
+  appCopyright: "© 2026 vimi",
   asar: true,
   extraResource: [join(stage, 'native-bin/keychain-touchid')],
   overwrite: true,

@@ -1,6 +1,6 @@
 {
   "name": "healthtrend",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -35,5 +35,6 @@
     "pdfjs-dist": "^6.4.299",
     "tesseract.js": "^7.0.0"
   },
-  "productName": "HealthTrend"
+  "productName": "HealthTrend",
+  "author": "vimi"
 }
