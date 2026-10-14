@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
+import { auditPublicArtifact } from './publicArtifact.mjs';
 
 const root = process.cwd();
 const fail = (message) => { throw new Error(`Public release audit failed: ${message}`); };
@@ -22,6 +23,8 @@ for (const path of tracked.filter((file) => sourceExtensions.has(extname(file)))
 }
 
 const dist = resolve(root, 'dist');
+const committedDemo = execFileSync('git', ['show', 'HEAD:public/seeds/demo-record.json'], { cwd: root });
+const inventory = await auditPublicArtifact(dist, committedDemo);
 const index = await readFile(join(dist, 'index.html'), 'utf8');
 if (!index.includes('HealthTrend')) fail('built app shell is missing its title.');
 if (!index.includes(`${expectedBase}assets/`)) fail(`built app shell does not use configured base path ${expectedBase}.`);
@@ -59,4 +62,4 @@ for (const [name, license] of expectedLicenses) {
   if (metadata.license !== license) fail(`license inventory changed for ${name}; expected ${license}, found ${metadata.license}.`);
 }
 
-console.info(`Public audit passed: ${tracked.length} source files; ${requiredAssets.length} same-origin OCR assets (${(totalOcrBytes / 1024 / 1024).toFixed(1)} MiB); base ${expectedBase}.`);
+console.info(`Public audit passed: ${inventory.length} inventoried output files; ${tracked.length} source files; ${requiredAssets.length} same-origin OCR assets (${(totalOcrBytes / 1024 / 1024).toFixed(1)} MiB); base ${expectedBase}.`);

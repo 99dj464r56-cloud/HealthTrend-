@@ -69,12 +69,6 @@ function drawRegimenBands(
   });
 }
 
-function limitsEqual(
-  a: { lowerLimit: number | null; upperLimit: number | null },
-  b: { lowerLimit: number | null; upperLimit: number | null },
-): boolean {
-  return a.lowerLimit === b.lowerLimit && a.upperLimit === b.upperLimit;
-}
 
 function drawFullWidthLimit(
   svg: SVGSVGElement,
@@ -140,8 +134,7 @@ function drawMissingLimitNote(
 
 /**
  * Draw dashed reference limits across the full time axis.
- * Same limits on every point → one full-width line each.
- * Differing limits → full-width line for the most recent report's limits, dated in the label.
+ * Full-width lines use the most recent report's limits and are labelled as comparison lines.
  * Point abnormal colors still come from each observation's own limits (caller).
  */
 function drawRangeVisuals(
@@ -154,9 +147,8 @@ function drawRangeVisuals(
 ): void {
   if (!plottable.length) return;
 
-  const allSame = plottable.every((point) => limitsEqual(point, plottable[0]!));
   const display = plottable[plottable.length - 1]!;
-  const dateTag = allSame ? '' : `（${display.date} 报告）`;
+  const dateTag = `（最新报告对照线 ${display.date}${display.rangeProvenance === 'migrated-unverified' ? ' · 迁移范围未核实' : ''}）`;
 
   let lane = 0;
   if (display.lowerLimit !== null) {
@@ -273,7 +265,7 @@ export function renderIndicatorChart(series: ChartSeries): SVGSVGElement {
       'data-x': String(x),
     });
     const pointTitle = svgNode('title');
-    pointTitle.textContent = `${point.date} · ${point.rawValue || point.value} ${series.unit}`;
+    pointTitle.textContent = `${point.date} · ${point.rawValue || point.value} ${series.unit} · 当次范围 ${point.lowerLimit ?? '未提供'}–${point.upperLimit ?? '未提供'} · ${point.rangeProvenance} · ${point.laboratory ?? '实验室未填写'} · ${point.method ?? '方法未填写'}`;
     circle.append(pointTitle);
     svg.append(circle);
   });
@@ -343,5 +335,8 @@ export function renderIndicatorChart(series: ChartSeries): SVGSVGElement {
   const yLabel = svgNode('text', { x: '8', y: '299', class: 'axis-unit' });
   yLabel.textContent = series.unit;
   svg.append(yLabel);
+  const explanation = svgNode('text', { x: String(LEFT), y: '299', class: 'axis-unit' });
+  explanation.textContent = '点颜色按当次范围；最新报告对照线不代表历史范围';
+  svg.append(explanation);
   return svg;
 }

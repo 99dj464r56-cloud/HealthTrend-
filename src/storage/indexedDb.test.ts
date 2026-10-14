@@ -46,3 +46,40 @@ describe('local health record storage', () => {
     await expect(method('loadHealthRecord')()).resolves.toBeNull();
   });
 });
+
+it('conditional encrypted restore refuses a changed vault and preserves newer data', async () => {
+  vi.stubGlobal('indexedDB', new IDBFactory());
+  storage.setActiveWorkspace('personal');
+  const { createVault } = await import('../security/vault');
+  const vault = await createVault('synthetic-password', 1000);
+  const empty = emptyHealthRecord();
+  await storage.initializeVault(vault.meta, vault.key, empty);
+  const newer = { ...empty, profile: { displayName: 'Synthetic Newer', identityConfirmed: true } };
+  await storage.saveHealthRecord(newer);
+  await expect(storage.saveHealthRecordIfUnchanged(record, empty)).rejects.toThrow(/已改变/);
+  expect(await storage.loadHealthRecord()).toEqual(newer);
+  await storage.saveHealthRecordIfUnchanged(empty, newer);
+  expect(await storage.loadHealthRecord()).toEqual(empty);
+  storage.setSessionKey(null);
+  vi.unstubAllGlobals();
+});
+
+it('conditional restore catches a write during encryption before its atomic transaction', async () => {
+  vi.stubGlobal('indexedDB', new IDBFactory());
+  storage.setActiveWorkspace('personal');
+  const { createVault } = await import('../security/vault');
+  const vault = await createVault('synthetic-password', 1000);
+  const empty = emptyHealthRecord();
+  await storage.initializeVault(vault.meta, vault.key, empty);
+  const newer = { ...empty, profile: { displayName: 'Concurrent Synthetic', identityConfirmed: true } };
+  const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+  vi.spyOn(crypto.subtle, 'encrypt').mockImplementationOnce(async (...args) => {
+    await storage.saveHealthRecord(newer);
+    return encrypt(...args);
+  });
+  await expect(storage.saveHealthRecordIfUnchanged(record, empty)).rejects.toThrow(/已改变/);
+  expect(await storage.loadHealthRecord()).toEqual(newer);
+  storage.setSessionKey(null);
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});

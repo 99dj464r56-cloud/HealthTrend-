@@ -1,3 +1,5 @@
+> Historical record (2026-10-12). Current acceptance status and fixes: [release verification](healthtrend-release-verification-2026-10-13.md). Earlier completion labels do not establish device acceptance.
+
 # Gap analysis + domain model sketch + phased plan
 
 **Date:** 2026-10-12 (Asia/Taipei)  

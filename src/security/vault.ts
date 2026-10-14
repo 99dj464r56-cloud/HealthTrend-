@@ -42,7 +42,7 @@ export interface WebAuthnTouchIdWrap {
   createdAt: string;
 }
 
-/** Desktop app: DEK sealed by Electron safeStorage (macOS Keychain), released after promptTouchID. */
+/** Desktop app: DEK in a device-bound Keychain item; Electron gates access with promptTouchID (no item biometric ACL). */
 export interface NativeTouchIdWrap {
   kind: 'native';
   createdAt: string;

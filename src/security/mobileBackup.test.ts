@@ -5,6 +5,7 @@ import { clearHealthRecord, setActiveWorkspace } from '../storage/indexedDb';
 import {
   bumpMobileBackupChanges,
   mobileBackupStale,
+  getBackupRevision,
   recordMobileBackupSuccess,
 } from './mobileBackup';
 
@@ -30,4 +31,12 @@ describe('mobileBackup staleness', () => {
     expect(s.stale).toBe(true);
     expect(s.reason).toMatch(/改动/);
   });
+  it('confirming an older snapshot preserves newer edits', async () => {
+    await bumpMobileBackupChanges();
+    const revision = await getBackupRevision();
+    await bumpMobileBackupChanges();
+    await recordMobileBackupSuccess(revision);
+    expect((await mobileBackupStale()).changes).toBe(1);
+  });
+
 });

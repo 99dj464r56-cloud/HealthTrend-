@@ -45,3 +45,7 @@ Public / GitHub Pages / share builds set `VITE_SHARE_BUILD=1` so personal mode s
 ## Roadmap note (not in this homework cut)
 
 Family multi-profile (separate vaults per person under one device) is intentionally deferred; storage keys and mode switcher are shaped so a later profile picker can land without a schema rename.
+
+## 2026-10-13 chart clarification
+
+Full-width dashed lines are explicitly labelled latest-report comparison lines with report date. They do not represent historical reference intervals. Each point is classified using its own recorded limits; hover text includes laboratory, method and range provenance. Migrated-unverified ranges remain explicitly unverified. This clarification supersedes the earlier segmented-band display proposal; segmented range utilities do not define the currently shipped visual.

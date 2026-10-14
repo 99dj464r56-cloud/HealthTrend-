@@ -45,7 +45,7 @@ test('desktop app: three modes, set password, native encrypted backup', async ()
   await win.getByLabel('档案显示名').fill(PROFILE);
   await win.getByLabel('我确认以上显示名对应该档案所属人').check();
   await win.getByRole('button', { name: '保存档案身份' }).click();
-  await expect(win.locator('[data-backup-status]')).toContainText('已备份到', { timeout: 15_000 });
+  await expect(win.locator('[data-backup-status]')).toContainText('已写入', { timeout: 15_000 });
   const text = readFileSync(join(backupDir, 'health-trend-personal.enc.json'), 'utf8');
   expect(text).not.toContain(PROFILE);
   expect(JSON.parse(text)).toMatchObject({ format: 'health-trend-personal-enc', version: 2 });

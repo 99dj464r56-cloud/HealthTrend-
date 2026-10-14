@@ -1,5 +1,5 @@
 import { createServer, request, type Server } from 'node:http';
-import { mkdtemp, readdir, readFile, rm, utimes } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -93,4 +93,10 @@ describe('localhost encrypted backup middleware', () => {
     const history = await readdir(join(dir, HISTORY_DIR_NAME));
     expect(history).toHaveLength(10);
   });
+  it('never deletes pending or other restore files from a browser request', async () => {
+    for (const name of ['_pending-restore.json', '待导入_个人资料.json']) await writeFile(join(dir, name), '{"schemaVersion":4,"medications":[]}');
+    expect((await call('DELETE', '/__backup/pending-restore')).status).toBe(405);
+    expect(await readdir(dir)).toEqual(expect.arrayContaining(['_pending-restore.json', '待导入_个人资料.json']));
+  });
+
 });

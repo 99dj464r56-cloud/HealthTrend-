@@ -134,9 +134,7 @@ export function createBackupHandler(options: BackupHandlerOptions) {
         return send(res, 200, parsed);
       }
       if (path === '/__backup/pending-restore' && req.method === 'DELETE') {
-        await unlink(join(dir, '_pending-restore.json')).catch(() => undefined);
-        await unlink(join(dir, '待导入_个人资料.json')).catch(() => undefined);
-        return send(res, 200, { ok: true });
+        return send(res, 405, { error: 'Recovery source files must be retained; remove them manually after verification.' });
       }
       if (path === '/__backup/personal' && req.method === 'GET') {
         const text = await readFile(join(dir, BACKUP_FILE_NAME), 'utf8').catch(() => null);

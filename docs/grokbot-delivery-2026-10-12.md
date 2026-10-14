@@ -1,3 +1,5 @@
+> Historical record (2026-10-12). Current acceptance status and fixes: [release verification](healthtrend-release-verification-2026-10-13.md). Earlier completion labels do not establish device acceptance.
+
 # Health Trend PDF — Delivery Report (2026-10-12)
 
 Branch: `feature/health-trend-pdf`  
