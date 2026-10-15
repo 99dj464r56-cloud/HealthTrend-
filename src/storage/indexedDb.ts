@@ -171,6 +171,20 @@ export async function putVaultMeta(meta: VaultMeta): Promise<void> {
   await runTransaction('readwrite', (store) => store.put(meta, VAULT_META_KEY));
 }
 
+/**
+ * After a one-time legacy password unlock: store the record as plaintext and drop the vault.
+ * Device unlock (OS / browser profile) is then enough — no app password on later opens.
+ */
+export async function migrateVaultToPlaintext(record: HealthRecord): Promise<void> {
+  const confirmedRecord = validateHealthRecord(record);
+  await runTransaction('readwrite', (store) => {
+    store.put(confirmedRecord, CURRENT_RECORD_KEY);
+    store.delete(ENCRYPTED_RECORD_KEY);
+    return store.delete(VAULT_META_KEY);
+  });
+  sessionKey = null;
+}
+
 /** Plaintext record (pre-vault) for migration preview; null if absent or encrypted. */
 export async function loadPlaintextRecordForMigration(): Promise<HealthRecord | null> {
   if (await getVaultMeta()) return null;

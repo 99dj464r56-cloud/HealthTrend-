@@ -11,7 +11,7 @@ HealthTrend keeps health data on the device you use. There is no HealthTrend acc
 ## Personal vault
 
 - Personal mode encrypts the record at rest (PBKDF2-SHA256 → KEK wraps DEK → AES-GCM).
-- Unlock with a recovery password; optional Touch ID (WebAuthn PRF in Chromium `localhost`, or Electron Keychain helper on Mac).
+- Personal mode opens with device unlock only (no app password). Legacy password vaults can be migrated once with the old recovery password.
 - Encrypted backup file: `health-trend-personal.enc.json`. Desktop can write it into a chosen/iCloud folder; on iPhone/iPad Safari the **「备份到 iCloud」** banner shares or downloads that file into the Files app. Ciphertext only — the password is never stored in the backup file.
 - Public / GitHub Pages / share builds (`VITE_SHARE_BUILD=1`) never ship a personal seed. Personal mode starts empty.
 

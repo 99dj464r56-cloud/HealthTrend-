@@ -1,6 +1,6 @@
 # HealthTrend
 
-**本机健康趋势整理** — 化验、药盒与报告草稿留在你的设备上；需要换机或备份时，导出的是**加密**文件，不是明文病历。
+**本机健康趋势整理** — 化验、药盒与报告草稿留在你的设备上；个人档案本机直开（设备解锁即可，无需 App 密码）。换机时请用「导出 JSON 备份」。
 
 > 不是问诊机器人，也不替你判断「正不正常」。参考区间来自你录入／报告上的数值；OCR 只出草稿，保存前必须人工核对。
 
@@ -11,21 +11,21 @@
 | 资料本机 | IndexedDB；无账号、无上传、无分析埋点 |
 | 观察自带区间 | 上下限跟每一次化验走，不套通用「正常值」 |
 | 照片 OCR 草稿 | 浏览器内识别，确认后才入库 |
-| 加密 iCloud 备份 | `health-trend-personal.enc.json`；Mac 可自动写进备份文件夹，iPhone 用「备份到 iCloud」分享到「文件」 |
-| 三模式 | 访客试玩 · 演示合成数据 · 个人加密档案 |
-| Mac App | `/Applications/HealthTrend.app`，Touch ID 解锁 + 打印 |
+| 本机备份 | 「导出 JSON 备份」；旧版加密信封仍可用密码一次性迁移 |
+| 三模式 | 访客试玩 · 演示合成数据 · 个人本机档案 |
+| Mac App | `/Applications/HealthTrend.app`，打印 |
 | 家用多档案 | 路线图：同一设备多个人独立保险库（尚未做） |
 
 ## 快速开始
 
 ```bash
 npm ci
-npm run dev          # http://localhost:5173 — 个人模式请用 localhost（Touch ID / WebAuthn）
+npm run dev          # http://localhost:5173
 npm test
 npm run build:pages  # GitHub Pages 安全构建（无个人种子，base=/HealthTrend-/）
 ```
 
-Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**。个人档案改动后点横幅 **「备份到 iCloud」**，在「文件」里存到 iCloud 云盘。
+Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**。需要备份时用 **「导出 JSON 备份」**。
 
 ## 仓库与作业页
 
@@ -39,7 +39,7 @@ Safari（iPhone／iPad）：打开站点 → 分享 → **添加到主屏幕**�
 
 - 公开构建与分享包**不得**包含 `public/seeds/personal-backup.json` 或任何真实病历。
 - 演示数据仅为合成样本；截图不含真实姓名／药名／生日。
-- 不要把恢复口令写进仓库或截图。
+- 旧版恢复口令请勿写进仓库或截图；新安装不再需要 App 密码。
 
 ## 作者 / Author
 

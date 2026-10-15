@@ -8,6 +8,7 @@ import {
   initializeVault,
   loadHealthRecord,
   loadPlaintextRecordForMigration,
+  migrateVaultToPlaintext,
   readRawEntryForTests,
   saveHealthRecord,
   setActiveWorkspace,
@@ -69,5 +70,16 @@ describe('personal IndexedDB encryption at rest', () => {
     await clearHealthRecord();
     expect(await getVaultMeta()).not.toBeNull();
     expect(await loadHealthRecord()).toBeNull();
+  });
+
+  it('migrateVaultToPlaintext drops the vault and keeps the record readable without a session key', async () => {
+    const { meta, key } = await createVault(PASSWORD, 100_000);
+    await initializeVault(meta, key, plaintext);
+    expect(await getVaultMeta()).not.toBeNull();
+    await migrateVaultToPlaintext(plaintext);
+    setSessionKey(null);
+    expect(await getVaultMeta()).toBeNull();
+    expect(await readRawEntryForTests('current-enc')).toBeUndefined();
+    expect((await loadHealthRecord())?.profile.displayName).toBe('Migration Probe');
   });
 });

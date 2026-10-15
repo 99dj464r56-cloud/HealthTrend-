@@ -10,11 +10,8 @@ import {
   formatBackupPreviewSummary,
   previewBackup,
 } from '../import/backup';
-import { clearHealthRecord, loadHealthRecord, putVaultMeta, saveHealthRecord, setActiveWorkspace, setSessionKey } from '../storage/indexedDb';
-import { runPersonalGate, type PersonalSession } from './personalLock';
-import { buildBackupFile } from '../security/vault';
-import { chooseBackupFolder, folderPickerSupported, getBackupFolderName, isServerBackupEnabled, saveEncryptedBackup, BackupUnavailableError } from '../security/backupClient';
-import { bumpMobileBackupChanges, mobileBackupStale, recordMobileBackupSuccess, shareEncryptedBackupFile, shouldOfferManualBackupBanner } from '../security/mobileBackup';
+import { clearHealthRecord, loadHealthRecord, saveHealthRecord, setActiveWorkspace } from '../storage/indexedDb';
+import { openPersonalSession } from './personalLock';
 import { clearPendingRestore, fetchPendingRestore, isSparseRecord } from '../security/pendingRestore';
 import { nativeBridge } from '../native/bridge';
 import { createPrivacyNotice } from './privacyNotice';
@@ -169,9 +166,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const personalTitle = element('h3');
     personalTitle.textContent = '我的健康档案';
     const personalBody = element('p');
-    personalBody.textContent = import.meta.env.VITE_SHARE_BUILD === '1'
-      ? '密码保护的本机档案（首次使用需设置密码）。'
-      : '密码保护的个人记录（本机加密）。';
+    personalBody.textContent = '本机个人档案（设备解锁即可打开，无需 App 密码）。';
     const personalBtn = makeButton('进入我的档案');
     personalBtn.addEventListener('click', () => go(workspaceHref('personal')));
     personalCard.append(personalTitle, personalBody, personalBtn);
@@ -201,15 +196,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   setActiveWorkspace(mode);
 
-  let session: PersonalSession | null = null;
   let record: HealthRecord | null;
   if (mode === 'personal') {
-    // Personal mode is always password/Touch ID gated. The plaintext seed can only be
-    // used once, during first-time password setup (migration), never after a vault exists.
-    session = await runPersonalGate(root, { onSwitchMode: () => go(chooserHref()) });
-    record = session.record;
-    // One-shot recovery: if the unlocked vault is empty/sparse and a pending restore
-    // drop exists in the backup folder, import it and re-encrypt with the existing key.
+    // Device-local personal mode: no app password. Legacy encrypted vaults migrate once.
+    const personal = await openPersonalSession(root, { onSwitchMode: () => go(chooserHref()) });
+    record = personal.record;
+    // One-shot recovery: if the archive is empty/sparse and a pending restore drop exists, import it.
     if (isSparseRecord(record)) {
       const pending = await fetchPendingRestore();
       if (pending && !isSparseRecord(pending)) {
@@ -218,11 +210,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         if (verified && !isSparseRecord(verified)) {
           record = verified;
           await clearPendingRestore();
-          session = { ...session, fresh: true };
         } else {
-          // Keep pending drop if the encrypted write did not round-trip.
           record = pending;
-          session = { ...session, fresh: true };
         }
       }
     }
@@ -258,128 +247,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let importCoverageNote = '';
   let pageError = '';
 
-  // ---- Encrypted auto-backup (personal only) ----
-  const BACKUP_DEBOUNCE_MS = 3000;
-  const IDLE_LOCK_MS = 15 * 60 * 1000;
-  let backupTimer: number | undefined;
-  let backupInFlight: Promise<void> | null = null;
-  let backupState: { kind: 'idle' | 'saving' | 'ok' | 'error' | 'unset'; text: string } = { kind: 'idle', text: '' };
-  const serverBackup = mode === 'personal' ? await isServerBackupEnabled() : false;
-  let folderName = mode === 'personal' && !serverBackup ? await getBackupFolderName() : null;
-
-  function timeText(date: Date): string {
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function updateBackupStatus(): void {
-    const node = root.querySelector<HTMLElement>('[data-backup-status]');
-    if (!node) return;
-    node.textContent = backupState.text;
-    node.dataset.state = backupState.kind;
-  }
-
-  async function runBackup(interactive = false): Promise<void> {
-    if (!session || !record) return;
-    const current = session;
-    const snapshot = record;
-    backupState = { kind: 'saving', text: '正在备份…' };
-    updateBackupStatus();
-    try {
-      const file = await buildBackupFile(current.meta, current.key, snapshot);
-      try {
-        const result = await saveEncryptedBackup(file, interactive);
-        const where = result.label ?? (result.target === 'server' ? 'iCloud' : `「${folderName ?? '备份文件夹'}」`);
-        backupState = { kind: 'ok', text: `已备份到 ${where} · ${timeText(result.savedAt)}` };
-        await recordMobileBackupSuccess();
-      } catch (error) {
-        if (interactive && error instanceof BackupUnavailableError) {
-          // Mobile / plain browser: one-tap share/download into Files → iCloud.
-          const how = await shareEncryptedBackupFile(file);
-          backupState = { kind: 'ok', text: how === 'share' ? `已分享加密备份 · ${timeText(new Date())}` : `已下载 ${'health-trend-personal.enc.json'} · 请存到 iCloud 文件` };
-        } else {
-          backupState = error instanceof BackupUnavailableError
-            ? { kind: 'unset', text: error.message }
-            : { kind: 'error', text: `备份失败：${getErrorMessage(error)}` };
-        }
-      }
-    } catch (error) {
-      backupState = { kind: 'error', text: `备份失败：${getErrorMessage(error)}` };
-    }
-    updateBackupStatus();
-  }
-
-  async function shareMobileBackup(): Promise<void> {
-    if (!session || !record) return;
-    backupState = { kind: 'saving', text: '准备加密备份…' };
-    updateBackupStatus();
-    try {
-      const file = await buildBackupFile(session.meta, session.key, record);
-      const how = await shareEncryptedBackupFile(file);
-      backupState = { kind: 'ok', text: how === 'share' ? `已分享到「文件／iCloud」· ${timeText(new Date())}` : `已下载加密备份 · 请在「文件」选 iCloud` };
-    } catch (error) {
-      if ((error as { name?: string }).name === 'AbortError') {
-        backupState = { kind: 'unset', text: '已取消分享' };
-      } else {
-        backupState = { kind: 'error', text: `备份失败：${getErrorMessage(error)}` };
-      }
-    }
-    updateBackupStatus();
-  }
-
-  function scheduleBackup(): void {
-    if (mode !== 'personal' || !session) return;
-    window.clearTimeout(backupTimer);
-    backupState = { kind: 'saving', text: '有改动，稍后自动备份…' };
-    updateBackupStatus();
-    backupTimer = window.setTimeout(() => { backupInFlight = runBackup().finally(() => { backupInFlight = null; }); }, BACKUP_DEBOUNCE_MS);
-  }
-
-  async function flushBackup(): Promise<void> {
-    if (backupTimer !== undefined) {
-      window.clearTimeout(backupTimer);
-      backupTimer = undefined;
-      await runBackup();
-    } else if (backupInFlight) {
-      await backupInFlight;
-    }
-  }
-
-  let locking = false;
-  async function lock(reason: 'manual' | 'idle'): Promise<void> {
-    if (mode !== 'personal' || locking) return;
-    locking = true;
-    await flushBackup().catch(() => undefined);
-    await runBackup().catch(() => undefined);
-    setSessionKey(null);
-    session = null;
-    record = null;
-    // Full reload drops every in-memory reference to the key and decrypted data.
-    const url = new URL(workspaceHref('personal'), window.location.href);
-    if (reason === 'idle') url.searchParams.set('locked', 'idle');
-    window.location.replace(url.toString());
-  }
-
-  if (mode === 'personal') {
-    let lastActivity = Date.now();
-    const touch = () => { lastActivity = Date.now(); };
-    for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'mousemove']) {
-      window.addEventListener(type, touch, { passive: true });
-    }
-    // Interval check also covers sleep/suspend (timers don't fire while asleep).
-    window.setInterval(() => {
-      if (Date.now() - lastActivity >= IDLE_LOCK_MS) void lock('idle');
-    }, 15_000);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') void flushBackup();
-    });
-    if (session?.fresh) scheduleBackup();
-  }
-
+  // ---- Device-local personal mode (no app password / idle lock) ----
   async function commit(next: HealthRecord): Promise<void> {
     await saveHealthRecord(next);
     record = next;
-    scheduleBackup();
-    if (mode === 'personal') void bumpMobileBackupChanges();
     pageError = '';
     editingMedication = null;
     editingIndicator = null;
@@ -404,73 +275,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     switchLink.textContent = '切换模式';
     switchLink.addEventListener('click', () => go(chooserHref()));
     modeBar.append(modeLabel, switchLink);
-    if (mode === 'personal') {
-      const status = element('span', 'backup-status');
-      status.setAttribute('data-backup-status', '');
-      status.setAttribute('role', 'status');
-      modeBar.append(status);
-      const backupNow = element('button', 'text-button');
-      backupNow.type = 'button';
-      backupNow.textContent = '立即备份';
-      backupNow.addEventListener('click', () => void runBackup(true));
-      modeBar.append(backupNow);
-      if (!serverBackup && folderPickerSupported()) {
-        const pick = element('button', 'text-button');
-        pick.type = 'button';
-        pick.textContent = folderName ? '更换备份文件夹' : '选择备份文件夹';
-        pick.addEventListener('click', async () => {
-          try {
-            folderName = await chooseBackupFolder();
-            await runBackup(true);
-            render();
-          } catch {
-            // picker cancelled
-          }
-        });
-        modeBar.append(pick);
-      }
-      if (session?.meta.touchId) {
-        const disableTouch = element('button', 'text-button');
-        disableTouch.type = 'button';
-        disableTouch.textContent = '关闭 Touch ID';
-        disableTouch.addEventListener('click', async () => {
-          if (!session || !window.confirm('关闭 Touch ID 解锁？之后需用密码解锁（可在解锁时重新启用）。')) return;
-          const { touchId: _removed, ...rest } = session.meta;
-          session = { ...session, meta: rest };
-          await putVaultMeta(rest);
-          await nativeBridge()?.touchIdClear().catch(() => undefined);
-          render();
-        });
-        modeBar.append(disableTouch);
-      }
-      const lockButton = makeButton('锁定', 'secondary-button lock-button');
-      lockButton.setAttribute('data-lock-button', '');
-      lockButton.addEventListener('click', () => void lock('manual'));
-      modeBar.append(lockButton);
-    }
     content.append(modeBar);
-    if (mode === 'personal') {
-      const mobileBanner = element('div', 'mobile-backup-banner');
-      mobileBanner.setAttribute('data-mobile-backup-banner', '');
-      mobileBanner.hidden = true;
-      const mobileText = element('p');
-      mobileText.className = 'mobile-backup-text';
-      const mobileBtn = makeButton('备份到 iCloud', 'primary-button');
-      mobileBtn.type = 'button';
-      mobileBtn.setAttribute('data-mobile-backup-btn', '');
-      mobileBtn.addEventListener('click', () => void shareMobileBackup());
-      mobileBanner.append(mobileText, mobileBtn);
-      content.append(mobileBanner);
-      void (async () => {
-        if (!(await shouldOfferManualBackupBanner())) return;
-        const stale = await mobileBackupStale();
-        mobileText.textContent = stale.stale
-          ? `手机／平板请定期加密备份：${stale.reason ?? ''}。点下方按钮，在「文件」中存到 iCloud（如 日常调阅等备份文件夹）。`
-          : '建议备份到 iCloud：生成加密文件后，在「文件」App 中选择 iCloud 云盘保存。';
-        mobileBanner.hidden = false;
-        if (stale.stale) mobileBanner.classList.add('mobile-backup-stale');
-      })();
-    }
     if (mode === 'demo') {
       const banner = element('p', 'demo-banner');
       banner.setAttribute('role', 'status');
@@ -505,10 +310,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         onBack: render,
       }));
     });
-    const exportButton = makeButton(mode === 'personal' ? '导出 JSON（未加密）' : '导出 JSON 备份', 'secondary-button');
+    const exportButton = makeButton('导出 JSON 备份', 'secondary-button');
     exportButton.addEventListener('click', () => {
       if (!record) return;
-      if (mode === 'personal' && !window.confirm('导出的 JSON 是未加密明文，请勿放在共享位置。继续导出？')) return;
+      if (mode === 'personal' && !window.confirm('导出的 JSON 仅保存在你选择的位置；请勿放到共享／公开位置。继续导出？')) return;
       const url = URL.createObjectURL(exportBackup(record));
       const link = element('a');
       link.href = url;
@@ -1081,7 +886,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   function render(): void {
     root.replaceChildren(renderWorkspace());
-    updateBackupStatus();
   }
 
   render();

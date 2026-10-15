@@ -1,4 +1,4 @@
-/** Workspace modes: guest (empty), personal (encrypted vault), demo (synthetic reference). */
+/** Workspace modes: guest (empty), personal (device-local), demo (synthetic reference). */
 
 export type WorkspaceMode = 'guest' | 'personal' | 'demo';
 
