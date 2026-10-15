@@ -13,6 +13,9 @@ import {
 import { clearHealthRecord, loadHealthRecord, saveHealthRecord, setActiveWorkspace } from '../storage/indexedDb';
 import { openPersonalSession } from './personalLock';
 import { clearPendingRestore, fetchPendingRestore, isSparseRecord } from '../security/pendingRestore';
+import { exportEncryptedBackup, restoreEncryptedBackup } from '../import/encryptedBackup';
+import { showBackupDialog } from './backupDialog';
+import { BACKUP_FILE_NAME } from '../security/backupClient';
 import { nativeBridge } from '../native/bridge';
 import { createPrivacyNotice } from './privacyNotice';
 import { chooserHref, resolveWorkspaceMode, workspaceHref, type WorkspaceMode } from '../workspace/mode';
@@ -35,6 +38,17 @@ function makeButton(label: string, className = 'primary-button'): HTMLButtonElem
   button.type = 'button';
   button.textContent = label;
   return button;
+}
+
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = element('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function emptyRecord(): HealthRecord {
@@ -166,7 +180,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const personalTitle = element('h3');
     personalTitle.textContent = '我的健康档案';
     const personalBody = element('p');
-    personalBody.textContent = '本机个人档案（设备解锁即可打开，无需 App 密码）。';
+    personalBody.textContent = '本机个人档案，无需 App 密码；带走时导出加密备份。';
     const personalBtn = makeButton('进入我的档案');
     personalBtn.addEventListener('click', () => go(workspaceHref('personal')));
     personalCard.append(personalTitle, personalBody, personalBtn);
@@ -286,7 +300,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const emptyHint = element('p', 'demo-banner');
       emptyHint.setAttribute('role', 'status');
       emptyHint.setAttribute('data-personal-empty', '');
-      emptyHint.textContent = '本机个人档案是空的（资料只存在当前浏览器，不会自动从电脑同步）。可在下方填写档案，或用「导入 JSON 备份」从有数据的设备导入；想看示例请回首页开「示范报告」。';
+      emptyHint.textContent = '本机个人档案是空的（资料只存在当前浏览器，不会自动从电脑同步）。可在下方填写档案，或用「恢复加密备份」从有数据的设备导入；想看示例请回首页开「示范报告」。';
       content.append(emptyHint);
     }
     content.append(makeSectionHeading('健康记录'));
@@ -317,21 +331,22 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         onBack: render,
       }));
     });
-    const exportButton = makeButton('导出 JSON 备份', 'secondary-button');
-    exportButton.addEventListener('click', () => {
+    const exportButton = makeButton(mode === 'personal' ? '导出加密备份' : '导出 JSON 备份（未加密）', 'secondary-button');
+    exportButton.addEventListener('click', async () => {
       if (!record) return;
-      if (mode === 'personal' && !window.confirm('导出的 JSON 仅保存在你选择的位置；请勿放到共享／公开位置。继续导出？')) return;
-      const url = URL.createObjectURL(exportBackup(record));
-      const link = element('a');
-      link.href = url;
-      link.download = `health-record-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const snapshot = record;
+      if (mode === 'personal') {
+        await showBackupDialog({ kind: 'export', run: async (password) => {
+          const backup = await exportEncryptedBackup(snapshot, password);
+          downloadBlob(new Blob([`${JSON.stringify(backup)}\n`], { type: 'application/json' }), BACKUP_FILE_NAME);
+          return true;
+        } });
+      } else {
+        downloadBlob(exportBackup(snapshot), `health-record-${new Date().toISOString().slice(0, 10)}.json`);
+      }
     });
     const importLabel = element('label', 'secondary-button file-button');
-    importLabel.textContent = '导入 JSON 备份';
+    importLabel.textContent = mode === 'personal' ? '恢复加密备份' : '导入 JSON 备份';
     const importInput = element('input');
     importInput.id = 'backup-import';
     importInput.type = 'file';
@@ -340,8 +355,20 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const file = importInput.files?.[0];
       if (!file) return;
       try {
-        const { preview, record: incoming } = await previewBackup(file);
-        const summary = formatBackupPreviewSummary(preview);
+        let incoming: HealthRecord;
+        let summary: string;
+        const legacyPlaintext = mode === 'personal' && file.size <= 25 * 1024 * 1024
+          && Object.hasOwn(JSON.parse(await file.text()) ?? {}, 'schemaVersion');
+        if (mode === 'personal' && !legacyPlaintext) {
+          const restored = await showBackupDialog({ kind: 'restore', run: password => restoreEncryptedBackup(file, password) });
+          if (!restored) return;
+          incoming = restored;
+          summary = `加密备份：${file.name}\n档案：${incoming.profile.displayName || '（未命名）'}\n药物 ${incoming.medications.length} · 指标 ${incoming.indicators.length} · 观察值 ${incoming.observations.length}`;
+        } else {
+          const parsed = await previewBackup(file);
+          incoming = parsed.record;
+          summary = `${legacyPlaintext ? '旧版明文备份（导入后建议重新导出加密文件）。\n' : ''}${formatBackupPreviewSummary(parsed.preview)}`;
+        }
         const hasLocal = Boolean(record && (
           record.medications.length || record.indicators.length || record.observations.length
           || record.reportTextBlocks.length || record.appleHealthRecords.length
@@ -377,6 +404,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     });
     toolbarActions.append(reportButton, exportButton, importLabel, clearButton);
     dataToolbar.append(toolbarHeading, toolbarActions);
+    if (mode === 'personal') {
+      const backupNote = element('p', 'form-help');
+      backupNote.textContent = '本浏览器记录未加密，由设备安全保护；导出的备份文件使用密码加密。恢复也支持旧版明文 JSON。趋势报告／PDF 含可读健康资料，请仅在需要时打印或保存。';
+      dataToolbar.append(backupNote);
+    }
     content.append(dataToolbar);
 
     const captureIntro = element('section', 'capture-priority-panel');

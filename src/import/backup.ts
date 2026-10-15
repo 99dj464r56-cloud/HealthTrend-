@@ -4,7 +4,7 @@ import type { HealthRecord } from '../domain/types';
 
 const MAX_BACKUP_SIZE = 25 * 1024 * 1024;
 
-/** Optional encrypted backups are not implemented in this release. */
+/** This module handles legacy plaintext JSON only; encrypted files use encryptedBackup.ts. */
 export const BACKUP_ENCRYPTION_SUPPORTED = false as const;
 
 export type BackupImportStrategy = 'replace-all' | 'cancel';
@@ -86,7 +86,7 @@ export async function previewBackup(file: File): Promise<{ preview: BackupPrevie
     '当前策略：替换本机全部记录（replace-all）。取消则不做任何写入。',
     BACKUP_ENCRYPTION_SUPPORTED
       ? '支持加密备份。'
-      : '可选加密导出尚未实现；请将明文 JSON 备份视为敏感资料妥善保管。',
+      : '此文件为未加密 JSON，请视为敏感资料妥善保管；个人模式可导出加密备份。',
   ];
   return {
     record,

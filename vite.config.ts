@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [healthBackupPlugin()],
   test: {
     environment: 'node',
-    exclude: ['tests/**/*.spec.ts', 'tmp/**', '**/node_modules/**', '**/dist/**'],
+    exclude: ['**/.worktrees/**', 'tests/**/*.spec.ts', 'tmp/**', '**/node_modules/**', '**/dist/**'],
     clearMocks: true,
   },
 });

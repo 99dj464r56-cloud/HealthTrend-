@@ -250,3 +250,10 @@ h1, h2, p { margin-top: 0; }
 .mobile-backup-banner.mobile-backup-stale { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
 .mobile-backup-text { margin: 0; flex: 1 1 220px; font-size: 0.92rem; line-height: 1.4; }
 .mobile-backup-banner .primary-button { white-space: nowrap; }
+
+.backup-dialog { width: min(460px, calc(100vw - 32px)); box-sizing: border-box; border: 1px solid #d8dee8; border-radius: 14px; padding: 24px; color: #17283c; background: #fff; max-height: calc(100dvh - 32px); overflow: auto; }
+.backup-dialog::backdrop { background: rgb(15 23 42 / 45%); }
+.backup-dialog form { display: grid; gap: 14px; }
+.backup-dialog h2, .backup-dialog p { margin: 0; }
+.backup-dialog p { line-height: 1.6; }
+.backup-dialog input { box-sizing: border-box; width: 100%; min-height: 44px; }

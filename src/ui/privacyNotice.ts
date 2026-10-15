@@ -2,6 +2,6 @@
 export function createPrivacyNotice(): HTMLElement {
   const section = document.createElement('p');
   section.className = 'privacy-notice privacy-notice-compact';
-  section.textContent = '资料仅保存在本浏览器，不会上传。iPhone／iPad：Safari 分享 →「添加到主屏幕」可像 App 一样打开；个人档案请用「备份到 iCloud」保存加密文件。';
+  section.textContent = '资料仅保存在本浏览器，不会上传。iPhone／iPad：Safari 分享 →「添加到主屏幕」可像 App 一样打开；个人档案用「导出加密备份」生成文件后，可自行存入 iCloud 云盘。';
   return section;
 }
