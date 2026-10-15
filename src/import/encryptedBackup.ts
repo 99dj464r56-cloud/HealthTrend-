@@ -32,7 +32,11 @@ export async function restoreEncryptedBackup(file: File, password: string): Prom
   }
   const opened = await openBackupFile(parsed, password);
   try {
-    return validateHealthRecord(migrateHealthRecord(opened.record));
+    // Current-schema backups must validate as-is: migration defaults could otherwise
+    // turn damaged/missing fields into an apparently valid empty archive.
+    const currentSchema = opened.record && typeof opened.record === 'object'
+      && 'schemaVersion' in opened.record && opened.record.schemaVersion === 4;
+    return validateHealthRecord(currentSchema ? opened.record : migrateHealthRecord(opened.record));
   } finally {
     opened.rawKey.fill(0);
   }

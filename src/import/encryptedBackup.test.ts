@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildBackupFile, createVault } from '../security/vault';
 import { emptyHealthRecord } from '../domain/types';
 import { exportEncryptedBackup, restoreEncryptedBackup } from './encryptedBackup';
 
@@ -19,6 +20,18 @@ describe('portable encrypted backups', () => {
     const oversized = { ...record, profile: { ...record.profile, displayName: '测'.repeat(7 * 1024 * 1024) } };
     const result = await exportEncryptedBackup(oversized, password).then(() => 'unexpected-success', e => String(e));
     expect(result).toContain('25 MiB');
+  });
+  it('rejects excessive imported key-derivation work before decrypting', async () => {
+    const backup = await exportEncryptedBackup(record, password);
+    backup.kdf.iterations = 2_000_001;
+    await expect(restoreEncryptedBackup(asFile(backup), password)).rejects.toThrow(/参数无效/);
+  });
+  it('rejects authenticated ciphertext containing an invalid health record', async () => {
+    const vault = await createVault(password);
+    try {
+      const backup = await buildBackupFile(vault.meta, vault.key, { schemaVersion: 4, profile: null });
+      await expect(restoreEncryptedBackup(asFile(backup), password)).rejects.toThrow();
+    } finally { vault.rawKey.fill(0); }
   });
   it('rejects weak passwords', async () => {
     await expect(exportEncryptedBackup(record, 'short')).rejects.toThrow(/至少/);

@@ -40,6 +40,8 @@ Files: sanitized Sites project, .openai/hosting.json, delivery README and verifi
 - Existing npm test failure reproduced: nested worktree suites wrongly collected; exclude .worktrees.
 
 - Review: independent reviewer found export/restore size mismatch; reproduced with a failing test, fixed by rejecting envelopes above 25 MiB before download.
-- Verification: 116 unit tests and 9 web end-to-end tests pass; TypeScript and share-safe build pass. Full e2e additionally found an obsolete packaged Mac app test failure (desktopApp.spec.ts first test; second did not run); desktop binary not rebuilt in this web-only scope.
+- Verification: 118 unit tests and 9 web end-to-end tests pass; TypeScript and share-safe build pass. Full e2e additionally found an obsolete packaged Mac app test failure (desktopApp.spec.ts first test; second did not run); desktop binary not rebuilt in this web-only scope.
 - Ruling: use a feature branch in the existing clean checkout; avoid changing the older linked worktree.
 - Deployment verification and final documentation are pending; checkboxes above describe implemented preparation, not a claim of live availability.
+
+- Additional negative tests: reject excessive KDF work and malformed authenticated schema-v4 records; schema-v4 restores validate without migration defaults. 118 unit tests pass; backup browser round-trip tests rerun and pass.
