@@ -282,6 +282,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       banner.textContent = '示范数据 · 非真实病历 / DEMO — synthetic sample, not a real medical record';
       content.append(banner);
     }
+    if (mode === 'personal' && isSparseRecord(record)) {
+      const emptyHint = element('p', 'demo-banner');
+      emptyHint.setAttribute('role', 'status');
+      emptyHint.setAttribute('data-personal-empty', '');
+      emptyHint.textContent = '本机个人档案是空的（资料只存在当前浏览器，不会自动从电脑同步）。可在下方填写档案，或用「导入 JSON 备份」从有数据的设备导入；想看示例请回首页开「示范报告」。';
+      content.append(emptyHint);
+    }
     content.append(makeSectionHeading('健康记录'));
     content.append(createProfilePanel(record?.profile ?? emptyRecord().profile));
 
