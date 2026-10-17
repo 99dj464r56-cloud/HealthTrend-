@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseMedicationCandidates, parseMedicationPackagingDraft } from './medicationPackaging';
+import {
+  knownMonitoringHintForMedication,
+  normalizeMonitoringHints,
+  parseMedicationCandidates,
+  parseMedicationPackagingDraft,
+} from './medicationPackaging';
 
 describe('medication packaging draft parsing', () => {
   it('keeps pack counts out of strength and dose fields', () => {
@@ -83,5 +88,19 @@ describe('regimen stage summary dates', () => {
       startDate: '2024-05-01',
       endDate: null,
     })).toContain('2024-05-01 – 仍使用');
+  });
+});
+
+describe('monitoring hint helpers', () => {
+  it('normalizes hint separators into a display list', () => {
+    expect(normalizeMonitoringHints('心率；血压')).toBe('心率、血压');
+    expect(normalizeMonitoringHints(' A ; B，A ')).toBe('A、B');
+    expect(normalizeMonitoringHints('')).toBe('');
+    expect(normalizeMonitoringHints(null)).toBe('');
+  });
+
+  it('looks up known packaging hints by medication name and ignores unknown names', () => {
+    expect(knownMonitoringHintForMedication({ nameZh: '', nameEn: 'Metoprolol' })).toBe('心率、血压');
+    expect(knownMonitoringHintForMedication({ nameZh: '示例药', nameEn: 'Example medicine' })).toBeNull();
   });
 });

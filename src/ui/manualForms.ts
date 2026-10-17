@@ -101,9 +101,10 @@ export function createMedicationForm(medication: Medication | null, indicators: 
   form.append(heading);
   inputField(form, '中文药名', 'medication-name-zh', 'text', medication?.nameZh ?? '', true);
   inputField(form, 'English medication name', 'medication-name-en', 'text', medication?.nameEn ?? '', true);
+  inputField(form, '监测说明 / Monitoring note', 'medication-monitoring-note', 'text', medication?.monitoringNote ?? '', false);
   const help = document.createElement('p');
   help.className = 'form-help';
-  help.textContent = '剂量与起止日期请在“用药阶段”中记录；编辑当前阶段不会删除历史阶段。';
+  help.textContent = '监测说明用于非化验指标（如：心率、血压），留空则不显示。剂量与起止日期请在“用药阶段”中记录；编辑当前阶段不会删除历史阶段。';
   form.append(help);
 
   if (indicators.length) {

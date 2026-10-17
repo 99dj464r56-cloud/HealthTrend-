@@ -1,5 +1,5 @@
 import type { HealthRecord, Indicator, Observation } from '../domain/types';
-import { formatRegimenStageSummary } from '../import/medicationPackaging';
+import { formatRegimenStageSummary, knownMonitoringHintForMedication } from '../import/medicationPackaging';
 
 function createAction(label: string, action: string, id: string): HTMLButtonElement {
   const button = document.createElement('button');
@@ -81,7 +81,7 @@ function medicationTable(record: HealthRecord): HTMLElement {
     row.append(stageCell);
     const links = medication.linkedIndicatorIds.map((id) => record.indicators.find((indicator) => indicator.id === id)).filter((item): item is Indicator => Boolean(item));
     const linkText = links.map((indicator) => `${indicator.nameZh} / ${indicator.nameEn}`).join('、');
-    row.append(createCell(linkText || medication.monitoringNote?.trim() || '—'));
+    row.append(createCell(linkText || medication.monitoringNote?.trim() || knownMonitoringHintForMedication(medication) || '—'));
     const actions = document.createElement('td');
     actions.className = 'actions-cell';
     actions.append(

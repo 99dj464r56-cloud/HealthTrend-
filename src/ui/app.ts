@@ -24,6 +24,7 @@ import { createIndicatorForm, createMedicationForm, createObservationForm, creat
 import { createReviewTable } from './reviewTable';
 import { createImportPanel } from './importPanel';
 import { createAppleHealthImportPanel } from './appleHealthImport';
+import { normalizeMonitoringHints } from '../import/medicationPackaging';
 import { buildReportModel } from '../report/reportModel';
 import { createPrintView } from '../report/printView';
 
@@ -525,17 +526,19 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         const existingMed = current.medications.find((item) =>
           item.nameZh === candidate.nameZh && item.nameEn === candidate.nameEn);
         const medicationId = existingMed?.id ?? crypto.randomUUID();
+        const hintNote = normalizeMonitoringHints(candidate.linkedIndicatorHints) || null;
         const medication: Medication = existingMed
           ? {
             ...existingMed,
             linkedIndicatorIds: [...new Set([...existingMed.linkedIndicatorIds, ...linkedIndicatorIds])],
+            monitoringNote: existingMed.monitoringNote?.trim() ? existingMed.monitoringNote : hintNote,
           }
           : {
             id: medicationId,
             nameZh: candidate.nameZh,
             nameEn: candidate.nameEn,
             linkedIndicatorIds,
-            monitoringNote: null,
+            monitoringNote: hintNote,
           };
         const medications = existingMed
           ? current.medications.map((item) => (item.id === medicationId ? medication : item))
@@ -659,9 +662,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
             nameZh: formDataText(data, 'medication-name-zh'),
             nameEn: formDataText(data, 'medication-name-en'),
             linkedIndicatorIds: data.getAll('linkedIndicatorIds').filter((value): value is string => typeof value === 'string'),
-            monitoringNote: editingMedication?.monitoringNote
-              ?? record?.medications.find((item) => item.id === id)?.monitoringNote
-              ?? null,
+            monitoringNote: formDataText(data, 'medication-monitoring-note') || null,
           };
           const medications = [...(record?.medications ?? [])];
           const index = medications.findIndex((item) => item.id === id);

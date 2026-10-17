@@ -169,6 +169,25 @@ function extractNames(text: string): { nameZh: string; nameEn: string } {
   return { nameZh, nameEn };
 }
 
+/** Normalize a hint list such as "心率；血压" into display text "心率、血压". Empty -> ''. */
+export function normalizeMonitoringHints(hints: string | null | undefined): string {
+  if (!hints) return '';
+  const parts = hints.split(/[;；、,，\n]/).map((part) => part.trim()).filter(Boolean);
+  return [...new Set(parts)].join('、');
+}
+
+/**
+ * Known packaging monitoring hints for a medication name (e.g. metoprolol -> 心率、血压).
+ * Used as a display fallback when a medication has no linked indicators and no monitoringNote.
+ * Returns null for medications not in the hint table.
+ */
+export function knownMonitoringHintForMedication(names: { nameZh?: string | null; nameEn?: string | null }): string | null {
+  const text = `${names.nameZh ?? ''} ${names.nameEn ?? ''}`.trim();
+  if (!text) return null;
+  const hit = MONITORING_HINTS.find((rule) => rule.match.test(text));
+  return hit ? normalizeMonitoringHints(hit.hints) : null;
+}
+
 function monitoringHints(text: string): string {
   for (const rule of MONITORING_HINTS) {
     if (rule.match.test(text)) return rule.hints;

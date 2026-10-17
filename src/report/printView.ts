@@ -1,7 +1,7 @@
 import { renderIndicatorChart } from '../charts/chartSvg';
 import type { ChartSeries } from '../charts/series';
 import type { ReportModel } from './reportModel';
-import { formatRegimenStageSummary } from '../import/medicationPackaging';
+import { formatRegimenStageSummary, knownMonitoringHintForMedication } from '../import/medicationPackaging';
 import './print.css';
 
 function html<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): HTMLElementTagNameMap[K] {
@@ -68,6 +68,7 @@ function createMedicationSummary(model: ReportModel): HTMLElement {
     const monitoring = uniqueLinks.length
       ? uniqueLinks.join('；')
       : (rowModel.medication.monitoringNote?.trim()
+        || knownMonitoringHintForMedication(rowModel.medication)
         || '未关联 / Not linked');
     cell(row, monitoring);
     tbody.append(row);
@@ -119,54 +120,6 @@ function createReportTextSection(model: ReportModel): HTMLElement {
   return section;
 }
 
-
-function createAppleHealthSection(model: ReportModel): HTMLElement {
-  const section = html('section', 'report-apple-health');
-  section.dataset.appleHealth = 'true';
-  const title = html('h2');
-  title.textContent = 'Apple 健康 / 活动记录（与化验指标分开）';
-  section.append(title);
-  if (!model.appleHealthGroups.length) {
-    const empty = html('p', 'report-note');
-    empty.textContent = '暂无已确认的 Apple 健康导入数据。';
-    section.append(empty);
-    return section;
-  }
-  const note = html('p', 'report-note');
-  note.textContent = '活动、训练与摘要按类别列出；不与化验指标混用坐标轴。未做静默求和/平均。';
-  section.append(note);
-  for (const group of model.appleHealthGroups) {
-    const heading = html('h3');
-    heading.textContent = group.category;
-    section.append(heading);
-    const table = html('table', 'report-table');
-    const header = html('tr');
-    ['日期', '类型', '数值', '来源', '备注'].forEach((label) => cell(header, label, true));
-    const thead = html('thead');
-    thead.append(header);
-    table.append(thead);
-    const tbody = html('tbody');
-    for (const row of group.rows.slice(0, 80)) {
-      const tr = html('tr');
-      cell(tr, row.localDate);
-      cell(tr, row.workoutActivityType ?? row.typeIdentifier);
-      cell(tr, row.value === null ? '—' : `${row.value}${row.unit ? ` ${row.unit}` : ''}`);
-      cell(tr, row.sourceName ?? '—');
-      cell(tr, row.kind === 'workout' ? `训练 ${row.duration ?? ''} ${row.durationUnit ?? ''}`.trim() : row.kind);
-      tbody.append(tr);
-    }
-    table.append(tbody);
-    const wrap = html('div', 'report-table-wrap');
-    wrap.append(table);
-    section.append(wrap);
-    if (group.rows.length > 80) {
-      const more = html('p', 'report-note');
-      more.textContent = `另有 ${group.rows.length - 80} 条未在表中展开（已保存在本机记录）。`;
-      section.append(more);
-    }
-  }
-  return section;
-}
 
 function chartCard(series: ChartSeries, priority: boolean): HTMLElement {
   const card = html('article', `chart-card${priority ? ' priority-card' : ''}`);
@@ -323,7 +276,7 @@ export function createProvenanceAppendix(model: ReportModel): HTMLElement {
   }
 
   const counts = html('p', 'report-note');
-  counts.textContent = `已确认报告文字 ${p.reportTextCount} 段 · Apple 健康记录 ${p.appleHealthCount} 条。`;
+  counts.textContent = `已确认报告文字 ${p.reportTextCount} 段。`;
   section.append(counts);
   return section;
 }
@@ -362,7 +315,7 @@ export function createPrintView(model: ReportModel, actions: PrintViewActions): 
     demoBanner.textContent = '示范数据 · 非真实病历 / DEMO — synthetic sample for layout reference only';
     header.append(demoBanner);
   }
-  root.append(toolbar, header, createMedicationSummary(model), createReportTextSection(model), createAppleHealthSection(model));
+  root.append(toolbar, header, createMedicationSummary(model), createReportTextSection(model));
 
   root.append(chartSection('第一类：必须关注的重要指标 / Priority indicators', '每项指标单独呈现；虚线标出录入的报告参考上下限，红色箭头仅表示数值超出已录入范围。用药色条为中性时间标记。', model.priorityIndicators, true));
   for (const category of model.categories) {
