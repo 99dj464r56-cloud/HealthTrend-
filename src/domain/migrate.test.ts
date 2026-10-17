@@ -178,3 +178,12 @@ describe('IndexedDB migrate load with rollback safety', () => {
     await expect(loadHealthRecord()).resolves.toEqual(record);
   });
 });
+
+describe('migrate keeps updatedAt', () => {
+  it('preserves a valid updatedAt and drops an invalid one', async () => {
+    const { migrateHealthRecord } = await import('./migrate');
+    const { emptyHealthRecord } = await import('./types');
+    expect(migrateHealthRecord({ ...emptyHealthRecord(), updatedAt: '2026-01-02T03:04:05.000Z' }).updatedAt).toBe('2026-01-02T03:04:05.000Z');
+    expect('updatedAt' in migrateHealthRecord({ ...emptyHealthRecord(), updatedAt: 42 })).toBe(false);
+  });
+});

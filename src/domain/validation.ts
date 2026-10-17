@@ -215,6 +215,11 @@ export function validateHealthRecord(record: unknown): HealthRecord {
   assert(record.schemaVersion === 4, 'Unsupported health record version.');
   assertProfile(record.profile);
   assert(
+    record.updatedAt === undefined
+      || (typeof record.updatedAt === 'string' && Number.isFinite(Date.parse(record.updatedAt))),
+    'Health record updatedAt is invalid.',
+  );
+  assert(
     Array.isArray(record.medications)
       && Array.isArray(record.regimenStages)
       && Array.isArray(record.indicators)

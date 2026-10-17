@@ -32,6 +32,12 @@ export interface HealthRecord {
   /** Confirmed Apple Health / Fitness export rows (separate from lab observations). */
   appleHealthRecords: AppleHealthRecord[];
   sources: Source[];
+  /**
+   * ISO time of the last local change (stamped on every save from the app).
+   * Optional so legacy v4 records and backups stay valid; used to decide which
+   * device's copy is newer when syncing via iCloud.
+   */
+  updatedAt?: string;
 }
 
 export interface Medication {

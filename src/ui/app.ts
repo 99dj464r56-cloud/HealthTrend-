@@ -24,6 +24,7 @@ import { createIndicatorForm, createMedicationForm, createObservationForm, creat
 import { createReviewTable } from './reviewTable';
 import { createImportPanel } from './importPanel';
 import { createAppleHealthImportPanel } from './appleHealthImport';
+import { checkNativeICloudOnLaunch, createICloudSyncPanel, type ICloudSyncContext } from './icloudSyncPanel';
 import { normalizeMonitoringHints } from '../import/medicationPackaging';
 import { buildReportModel } from '../report/reportModel';
 import { createPrintView } from '../report/printView';
@@ -261,12 +262,15 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let editingReportText: ReportTextBlock | null = null;
   let importCoverageNote = '';
   let pageError = '';
+  let syncStatus = '';
 
   // ---- Device-local personal mode (no app password / idle lock) ----
   async function commit(next: HealthRecord): Promise<void> {
-    await saveHealthRecord(next);
-    record = next;
+    const stamped: HealthRecord = { ...next, updatedAt: new Date().toISOString() };
+    await saveHealthRecord(stamped);
+    record = stamped;
     pageError = '';
+    syncStatus = '';
     editingMedication = null;
     editingIndicator = null;
     activeObservationIndicator = null;
@@ -276,6 +280,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     editingReportText = null;
     render();
   }
+
+  const syncContext: ICloudSyncContext = {
+    getRecord: () => record,
+    applyIncoming: async (incoming) => {
+      const next = applyBackupImportStrategy(record, incoming, 'replace-all');
+      if (next) await commit(next);
+    },
+    onError: (message) => { pageError = message; syncStatus = ''; render(); },
+    onStatus: (message) => { syncStatus = message; pageError = ''; render(); },
+  };
 
   function renderWorkspace(): HTMLElement {
     const page = element('main', 'page-shell');
@@ -301,7 +315,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const emptyHint = element('p', 'demo-banner');
       emptyHint.setAttribute('role', 'status');
       emptyHint.setAttribute('data-personal-empty', '');
-      emptyHint.textContent = '本机个人档案是空的（资料只存在当前浏览器，不会自动从电脑同步）。可在下方填写档案，或用「恢复加密备份」从有数据的设备导入；想看示例请回首页开「示范报告」。';
+      emptyHint.textContent = '本机个人档案是空的（资料只存在当前浏览器，不会自动从电脑同步）。可在下方填写档案，或点「从 iCloud 同步」导入另一台设备保存的加密文件；想看示例请回首页开「示范报告」。';
       content.append(emptyHint);
     }
     content.append(makeSectionHeading('健康记录'));
@@ -312,6 +326,17 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       error.setAttribute('role', 'alert');
       error.textContent = pageError;
       content.append(error);
+    }
+
+    if (mode === 'personal') {
+      content.append(createICloudSyncPanel(syncContext));
+      if (syncStatus) {
+        const done = element('p', 'form-help');
+        done.setAttribute('role', 'status');
+        done.dataset.syncStatus = 'true';
+        done.textContent = syncStatus;
+        content.append(done);
+      }
     }
 
     const dataToolbar = element('section', 'data-toolbar');
@@ -929,4 +954,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
 
   render();
+  if (mode === 'personal') {
+    void checkNativeICloudOnLaunch(syncContext).catch((error) => syncContext.onError(getErrorMessage(error)));
+  }
 }

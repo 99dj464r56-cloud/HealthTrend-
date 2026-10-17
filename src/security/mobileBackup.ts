@@ -58,7 +58,10 @@ export async function mobileBackupStale(): Promise<{ stale: boolean; reason: str
 }
 
 /** Trigger download / iOS share sheet for an already-encrypted envelope. */
-export async function shareEncryptedBackupFile(file: EncryptedBackupFile): Promise<'share' | 'download'> {
+export async function shareEncryptedBackupFile(
+  file: EncryptedBackupFile,
+  options: { rethrowNotAllowed?: boolean } = {},
+): Promise<'share' | 'download'> {
   if (!isEncryptedBackupFile(file)) throw new Error('只能分享加密备份。');
   const blob = new Blob([`${JSON.stringify(file)}\n`], { type: 'application/json' });
   const shareFile = typeof File !== 'undefined'
@@ -77,6 +80,9 @@ export async function shareEncryptedBackupFile(file: EncryptedBackupFile): Promi
     } catch (error) {
       // User cancel → fall through to download; AbortError should not look like failure.
       if ((error as { name?: string }).name === 'AbortError') throw error;
+      // Safari drops the user gesture after slow async work (key derivation); let the caller
+      // offer a fresh tap instead of silently downloading.
+      if (options.rethrowNotAllowed && (error as { name?: string }).name === 'NotAllowedError') throw error;
     }
   }
   const url = URL.createObjectURL(blob);

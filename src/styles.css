@@ -257,3 +257,11 @@ h1, h2, p { margin-top: 0; }
 .backup-dialog h2, .backup-dialog p { margin: 0; }
 .backup-dialog p { line-height: 1.6; }
 .backup-dialog input { box-sizing: border-box; width: 100%; min-height: 44px; }
+
+/* iCloud sync panel (personal mode) */
+.icloud-sync-panel { display: grid; gap: 10px; margin: 19px 0; padding: 16px 18px; background: #f2f7ff; border: 1px solid #bcd3f5; border-radius: 9px; }
+.icloud-sync-panel h3 { margin: 0; font-size: 15px; }
+.icloud-sync-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.icloud-sync-actions .primary-button { min-height: 48px; font-size: 15px; white-space: normal; }
+.icloud-sync-status { margin: 0; font-size: 12px; color: #4a5a70; }
+.sync-dialog .sync-username { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }

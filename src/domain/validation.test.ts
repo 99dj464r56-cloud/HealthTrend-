@@ -70,3 +70,12 @@ describe('validateHealthRecord', () => {
     expect(validate({ ...validRecord, schemaVersion: 3 }).kind).toBe('error');
   });
 });
+
+describe('record updatedAt (migration-safe)', () => {
+  it('accepts records with or without a valid updatedAt and rejects invalid values', () => {
+    expect(validation.validateHealthRecord({ ...emptyHealthRecord() }).updatedAt).toBeUndefined();
+    expect(validation.validateHealthRecord({ ...emptyHealthRecord(), updatedAt: '2026-01-02T03:04:05.000Z' }).updatedAt)
+      .toBe('2026-01-02T03:04:05.000Z');
+    expect(() => validation.validateHealthRecord({ ...emptyHealthRecord(), updatedAt: 'not-a-date' })).toThrow(/updatedAt/);
+  });
+});

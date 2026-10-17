@@ -48,3 +48,11 @@ describe('portable encrypted backups', () => {
     await expect(restoreEncryptedBackup(new File([new Uint8Array(25 * 1024 * 1024 + 1)], 'huge.json'), password)).rejects.toThrow(/25/);
   });
 });
+
+describe('encrypted backup updatedAt (iCloud sync)', () => {
+  it('keeps the record updatedAt through export and restore', async () => {
+    const stamped = { ...record, updatedAt: '2026-01-02T03:04:05.000Z' };
+    const backup = await exportEncryptedBackup(stamped, 'example-sync-pass');
+    await expect(restoreEncryptedBackup(asFile(backup), 'example-sync-pass')).resolves.toEqual(stamped);
+  });
+});

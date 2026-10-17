@@ -236,6 +236,7 @@ export function migrateHealthRecord(raw: unknown): HealthRecord {
     reportTextBlocks: migrateReportTextBlocks(raw.reportTextBlocks),
     appleHealthRecords: migrateAppleHealthRecords(raw.appleHealthRecords),
     sources: Array.isArray(raw.sources) ? raw.sources as HealthRecord['sources'] : [],
+    ...(typeof raw.updatedAt === 'string' && Number.isFinite(Date.parse(raw.updatedAt)) ? { updatedAt: raw.updatedAt } : {}),
   };
 }
 
